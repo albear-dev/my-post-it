@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>포스트잇 전체 목록</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 9pt;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Toolbar ──────────────────────────── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    #toolbar button {
+      padding: 4px 12px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 9pt;
+      white-space: nowrap;
+    }
+    #toolbar button:hover:not(:disabled) { background: #eee; }
+    #toolbar button:disabled { opacity: 0.4; cursor: default; }
+
+    #btnNew { background: #ffe066; border-color: #ccaa00; font-weight: 600; }
+    #btnNew:hover { background: #ffd633; }
+
+    #btnDelete { color: #c00; border-color: #c00; }
+    #btnDelete:hover:not(:disabled) { background: #fee; }
+
+    .toolbar-sep {
+      width: 1px; height: 22px;
+      background: #ddd;
+      flex-shrink: 0;
+    }
+    .toolbar-spacer { flex: 1; }
+
+    #searchInput {
+      padding: 4px 8px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 9pt;
+      width: 180px;
+    }
+    #searchInput:focus {
+      outline: none;
+      border-color: #5c9eff;
+      box-shadow: 0 0 3px rgba(92,158,255,0.4);
+    }
+
+    /* ── Summary ──────────────────────────── */
+    #summary {
+      padding: 5px 14px;
+      font-size: 8.5pt;
+      color: #666;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
+      flex-shrink: 0;
+    }
+
+    /* ── Table ────────────────────────────── */
+    #table-wrap {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #postit-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #postit-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    #postit-table th {
+      background: #f0f0f0;
+      border-bottom: 2px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 8.5pt;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { background: #e4e4e4; }
+    th.sort-asc::after  { content: ' ▲'; font-size: 7pt; }
+    th.sort-desc::after { content: ' ▼'; font-size: 7pt; }
+
+    #postit-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #eee;
+      font-size: 9pt;
+      vertical-align: middle;
+    }
+
+    #postit-table tbody tr { cursor: pointer; }
+    #postit-table tbody tr:hover { background: #f5f5e0; }
+    #postit-table tbody tr.selected { background: #e8f0fe; }
+    #postit-table tbody tr.hidden-row { opacity: 0.55; }
+
+    .col-check    { width: 32px; text-align: center; }
+    .col-priority { width: 72px; }
+    .col-date     { width: 130px; }
+    .col-time     { width: 56px; }
+    .col-title    { }
+    .col-alarm    { width: 72px; text-align: center; }
+    .col-hidden   { width: 50px; text-align: center; }
+
+    /* 우선순위별 왼쪽 색상 바 */
+    tr.priority-1 td:first-child { box-shadow: inset 3px 0 0 #e53935; }
+    tr.priority-2 td:first-child { box-shadow: inset 3px 0 0 #f9a825; }
+    tr.priority-3 td:first-child { box-shadow: inset 3px 0 0 #1e88e5; }
+    tr.priority-4 td:first-child { box-shadow: inset 3px 0 0 #43a047; }
+    tr.priority-5 td:first-child { box-shadow: inset 3px 0 0 #888888; }
+
+    /* 빈 상태 */
+    #empty-msg {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+      font-size: 10pt;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <button id="btnNew" title="새 포스트잇">+ 새 포스트잇</button>
+    <div class="toolbar-sep"></div>
+    <button id="btnHide" title="선택 숨기기" disabled>숨기기</button>
+    <button id="btnUnhide" title="선택 보이기" disabled>보이기</button>
+    <button id="btnDelete" title="선택 삭제" disabled>삭제</button>
+    <div class="toolbar-sep"></div>
+    <button id="btnShowAll" title="전체 보이기">전체 보이기</button>
+    <button id="btnHideAll" title="전체 숨기기">전체 숨기기</button>
+    <div class="toolbar-spacer"></div>
+    <input type="text" id="searchInput" placeholder="검색...">
+  </div>
+
+  <div id="summary">
+    전체: <span id="countTotal">0</span>
+    | 표시: <span id="countVisible">0</span>
+    | 숨김: <span id="countHidden">0</span>
+  </div>
+
+  <div id="table-wrap">
+    <table id="postit-table">
+      <thead>
+        <tr>
+          <th class="col-check"><input type="checkbox" id="checkAll"></th>
+          <th class="col-priority sortable sort-asc" data-sort="priority">우선순위</th>
+          <th class="col-date sortable" data-sort="date">날짜</th>
+          <th class="col-time sortable" data-sort="time">시간</th>
+          <th class="col-title sortable" data-sort="title">타이틀</th>
+          <th class="col-alarm sortable" data-sort="alarm">알림</th>
+          <th class="col-hidden sortable" data-sort="hidden">숨김</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    <div id="empty-msg" style="display:none;">포스트잇이 없습니다.</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // ── State ──────────────────────────────
+    let allPostits    = [];
+    let sortKey       = 'priority';
+    let sortDir       = 'asc';
+    let searchKeyword = '';
+
+    const PRIORITY_LABELS = {
+      1: '1. 긴급', 2: '2. 우선', 3: '3. 보통',
+      4: '4. 천천히', 5: '5. 가끔',
+    };
+    const PRIORITY_COLORS = {
+      1: '#e53935', 2: '#f9a825', 3: '#1e88e5',
+      4: '#43a047', 5: '#888888',
+    };
+
+    // ── DOM refs ───────────────────────────
+    const tableBody   = document.getElementById('table-body');
+    const emptyMsg    = document.getElementById('empty-msg');
+    const searchInput = document.getElementById('searchInput');
+    const checkAll    = document.getElementById('checkAll');
+    const btnHide     = document.getElementById('btnHide');
+    const btnUnhide   = document.getElementById('btnUnhide');
+    const btnDelete   = document.getElementById('btnDelete');
+    const countTotal  = document.getElementById('countTotal');
+    const countVisible= document.getElementById('countVisible');
+    const countHidden = document.getElementById('countHidden');
+
+    // ── Utility ────────────────────────────
+    function stripHtml(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      return div.textContent || div.innerText || '';
+    }
+
+    function extractTitle(html) {
+      const text = stripHtml(html);
+      const first = text.split('\n').find(l => l.trim());
+      return first ? first.trim() : '(빈 메모)';
+    }
+
+    function calcDday(dateStr) {
+      if (!dateStr) return '';
+      const target = new Date(dateStr + 'T00:00:00');
+      const today  = new Date(); today.setHours(0, 0, 0, 0);
+      const diff   = Math.ceil((target - today) / 86400000);
+      if (diff > 0)   return `D-${diff}`;
+      if (diff === 0) return 'D-Day';
+      return `D+${Math.abs(diff)}`;
+    }
+
+    // ── Filter ─────────────────────────────
+    function getFilteredPostits() {
+      if (!searchKeyword) return allPostits;
+      const kw = searchKeyword.toLowerCase();
+      return allPostits.filter(p => stripHtml(p.content).toLowerCase().includes(kw));
+    }
+
+    // ── Sort ───────────────────────────────
+    function comparePostits(a, b) {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      let cmp = 0;
+
+      switch (sortKey) {
+        case 'priority':
+          cmp = (a.priority ?? 3) - (b.priority ?? 3); break;
+        case 'date':
+          cmp = (a.date || '9999').localeCompare(b.date || '9999'); break;
+        case 'time':
+          cmp = (a.time || '99:99').localeCompare(b.time || '99:99'); break;
+        case 'title':
+          cmp = extractTitle(a.content).localeCompare(extractTitle(b.content), 'ko'); break;
+        case 'alarm':
+          cmp = (a.alarm ? 1 : 0) - (b.alarm ? 1 : 0); break;
+        case 'hidden':
+          cmp = (a.hidden ? 1 : 0) - (b.hidden ? 1 : 0); break;
+      }
+
+      if (cmp !== 0) return cmp * dir;
+
+      // 보조 정렬: 우선순위 → 날짜 → 시간 → 숨김여부
+      cmp = (a.priority ?? 3) - (b.priority ?? 3);
+      if (cmp !== 0) return cmp;
+      cmp = (a.date || '9999').localeCompare(b.date || '9999');
+      if (cmp !== 0) return cmp;
+      cmp = (a.time || '99:99').localeCompare(b.time || '99:99');
+      if (cmp !== 0) return cmp;
+      return (a.hidden ? 1 : 0) - (b.hidden ? 1 : 0);
+    }
+
+    // ── Render ─────────────────────────────
+    function renderTable() {
+      const filtered = getFilteredPostits().sort(comparePostits);
+      tableBody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        emptyMsg.style.display = '';
+      } else {
+        emptyMsg.style.display = 'none';
+      }
+
+      filtered.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = p.id;
+        tr.className = `priority-${p.priority ?? 3}${p.hidden ? ' hidden-row' : ''}`;
+
+        // 체크박스
+        const tdCheck = document.createElement('td');
+        tdCheck.className = 'col-check';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'row-check';
+        cb.addEventListener('change', updateToolbarState);
+        cb.addEventListener('click', e => e.stopPropagation());
+        tdCheck.appendChild(cb);
+        tr.appendChild(tdCheck);
+
+        // 우선순위
+        const tdPri = document.createElement('td');
+        tdPri.className = 'col-priority';
+        tdPri.textContent = PRIORITY_LABELS[p.priority ?? 3] || '3. 보통';
+        tdPri.style.color = PRIORITY_COLORS[p.priority ?? 3] || '#1e88e5';
+        tdPri.style.fontWeight = 'bold';
+        tr.appendChild(tdPri);
+
+        // 날짜 + D-Day
+        const tdDate = document.createElement('td');
+        tdDate.className = 'col-date';
+        if (p.date) {
+          const dday = calcDday(p.date);
+          tdDate.innerHTML = `${p.date} <span style="color:#995500;font-size:8pt;font-weight:bold;">${dday}</span>`;
+        }
+        tr.appendChild(tdDate);
+
+        // 시간
+        const tdTime = document.createElement('td');
+        tdTime.className = 'col-time';
+        tdTime.textContent = p.time || '';
+        tr.appendChild(tdTime);
+
+        // 타이틀
+        const tdTitle = document.createElement('td');
+        tdTitle.className = 'col-title';
+        tdTitle.textContent = extractTitle(p.content);
+        tdTitle.style.overflow = 'hidden';
+        tdTitle.style.textOverflow = 'ellipsis';
+        tdTitle.style.whiteSpace = 'nowrap';
+        tdTitle.style.maxWidth = '0';
+        tr.appendChild(tdTitle);
+
+        // 알림
+        const tdAlarm = document.createElement('td');
+        tdAlarm.className = 'col-alarm';
+        if (p.alarm) {
+          const alarmDays = p.alarmDays || [];
+          const DAY_SHORT = ['일','월','화','수','목','금','토'];
+          if (alarmDays.length > 0) {
+            const dayStr = alarmDays.sort((a,b) => a-b).map(d => DAY_SHORT[d]).join('');
+            tdAlarm.textContent = dayStr;
+            tdAlarm.title = `매주 ${dayStr}`;
+          } else if (!p.date) {
+            tdAlarm.textContent = '매일';
+          } else {
+            tdAlarm.textContent = 'ON';
+          }
+          tdAlarm.style.color = '#4a8df8';
+          tdAlarm.style.fontWeight = 'bold';
+        } else {
+          tdAlarm.textContent = '';
+        }
+        tr.appendChild(tdAlarm);
+
+        // 숨김 여부
+        const tdHidden = document.createElement('td');
+        tdHidden.className = 'col-hidden';
+        tdHidden.textContent = p.hidden ? '숨김' : '';
+        tdHidden.style.color = p.hidden ? '#c00' : '';
+        tr.appendChild(tdHidden);
+
+        // 더블클릭 → 활성화
+        tr.addEventListener('dblclick', () => {
+          ipcRenderer.send('manager-activate', { id: p.id });
+        });
+
+        tableBody.appendChild(tr);
+      });
+
+      updateSummary();
+      updateToolbarState();
+      checkAll.checked = false;
+    }
+
+    // ── Summary ────────────────────────────
+    function updateSummary() {
+      const total   = allPostits.length;
+      const hidden  = allPostits.filter(p => p.hidden).length;
+      countTotal.textContent   = total;
+      countVisible.textContent = total - hidden;
+      countHidden.textContent  = hidden;
+    }
+
+    // ── Toolbar 상태 ──────────────────────
+    function updateToolbarState() {
+      const hasSelection = document.querySelectorAll('.row-check:checked').length > 0;
+      btnHide.disabled   = !hasSelection;
+      btnUnhide.disabled = !hasSelection;
+      btnDelete.disabled = !hasSelection;
+    }
+
+    function getSelectedIds() {
+      const ids = [];
+      document.querySelectorAll('.row-check:checked').forEach(cb => {
+        const tr = cb.closest('tr');
+        if (tr && tr.dataset.id) ids.push(tr.dataset.id);
+      });
+      return ids;
+    }
+
+    // ── Events ─────────────────────────────
+    checkAll.addEventListener('change', () => {
+      document.querySelectorAll('.row-check').forEach(cb => { cb.checked = checkAll.checked; });
+      updateToolbarState();
+    });
+
+    searchInput.addEventListener('input', () => {
+      searchKeyword = searchInput.value.trim();
+      renderTable();
+    });
+
+    // 정렬 헤더 클릭
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort;
+        if (sortKey === key) {
+          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortKey = key;
+          sortDir = 'asc';
+        }
+        document.querySelectorAll('th.sortable').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+        th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderTable();
+      });
+    });
+
+    // 툴바 버튼
+    document.getElementById('btnNew').addEventListener('click', () => {
+      ipcRenderer.send('manager-create');
+    });
+    btnHide.addEventListener('click', () => {
+      const ids = getSelectedIds();
+      if (ids.length > 0) ipcRenderer.send('manager-hide', { ids });
+    });
+    btnUnhide.addEventListener('click', () => {
+      const ids = getSelectedIds();
+      if (ids.length > 0) ipcRenderer.send('manager-unhide', { ids });
+    });
+    btnDelete.addEventListener('click', () => {
+      const ids = getSelectedIds();
+      if (ids.length > 0) ipcRenderer.send('manager-delete', { ids });
+    });
+    document.getElementById('btnShowAll').addEventListener('click', () => {
+      ipcRenderer.send('manager-show-all');
+    });
+    document.getElementById('btnHideAll').addEventListener('click', () => {
+      ipcRenderer.send('manager-hide-all');
+    });
+
+    // ── IPC ────────────────────────────────
+    ipcRenderer.on('manager-init', (_e, postits) => {
+      allPostits = postits;
+      renderTable();
+    });
+
+    // ── 키보드 단축키 ─────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') window.close();
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+      if (e.key === 'Delete') {
+        const ids = getSelectedIds();
+        if (ids.length > 0) ipcRenderer.send('manager-delete', { ids });
+      }
+    });
+  </script>
+</body>
+</html>

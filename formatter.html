@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>속성 변경</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 13px;
+      background: #f8f8f8;
+      color: #333;
+      padding: 16px 18px;
+      user-select: none;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .lbl {
+      width: 68px;
+      font-weight: 600;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+
+    select, input[type="number"] {
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 13px;
+      background: white;
+    }
+
+    select { flex: 1; cursor: pointer; }
+
+    input[type="number"] { width: 56px; }
+
+    .unit { color: #777; font-size: 12px; }
+
+    .checkboxes { display: flex; gap: 20px; }
+
+    .chk-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
+
+    input[type="color"] {
+      width: 36px;
+      height: 26px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      padding: 2px;
+      cursor: pointer;
+      background: none;
+    }
+
+    .preview-wrap {
+      margin: 12px 0;
+      padding: 8px 10px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+    }
+
+    #preview {
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 8pt;
+      color: #333;
+      word-break: break-all;
+    }
+
+    hr { border: none; border-top: 1px solid #ddd; margin: 12px 0; }
+
+    .btns {
+      display: flex;
+      justify-content: flex-end;
+      gap: 7px;
+    }
+
+    button {
+      padding: 5px 14px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      background: #fff;
+      cursor: pointer;
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 13px;
+    }
+
+    button:hover { background: #eee; }
+
+    #btnReset {
+      margin-right: auto; /* 왼쪽 정렬 */
+      border-color: #aaa;
+      color: #555;
+    }
+
+    #btnReset:hover { background: #f0f0f0; color: #c00; border-color: #c00; }
+
+    #btnSave {
+      background: #ffe066;
+      border-color: #ccaa00;
+      font-weight: 600;
+    }
+
+    #btnSave:hover { background: #ffd633; }
+  </style>
+</head>
+<body>
+  <!-- 글꼴 -->
+  <div class="row">
+    <span class="lbl">글꼴</span>
+    <select id="fontFamily">
+      <option value="Malgun Gothic" style="font-family:'Malgun Gothic'">맑은 고딕</option>
+      <option value="Gulim"         style="font-family:Gulim">굴림</option>
+      <option value="Dotum"         style="font-family:Dotum">돋움</option>
+      <option value="Batang"        style="font-family:Batang">바탕</option>
+      <option value="Gungsuh"       style="font-family:Gungsuh">궁서</option>
+      <option value="Arial"         style="font-family:Arial">Arial</option>
+      <option value="Times New Roman" style="font-family:'Times New Roman'">Times New Roman</option>
+      <option value="Courier New"   style="font-family:'Courier New'">Courier New</option>
+    </select>
+  </div>
+
+  <!-- 글자 크기 -->
+  <div class="row">
+    <span class="lbl">글자 크기</span>
+    <input type="number" id="fontSize" min="6" max="144" value="8">
+    <span class="unit">pt</span>
+  </div>
+
+  <!-- 스타일 -->
+  <div class="row">
+    <span class="lbl">스타일</span>
+    <div class="checkboxes">
+      <label class="chk-label"><input type="checkbox" id="bold"> 굵게</label>
+      <label class="chk-label"><input type="checkbox" id="underline"> 밑줄</label>
+    </div>
+  </div>
+
+  <!-- 글자색 -->
+  <div class="row">
+    <span class="lbl">글자색</span>
+    <input type="color" id="color" value="#333333">
+  </div>
+
+  <!-- 미리보기 -->
+  <div class="preview-wrap">
+    <span id="preview">미리보기 텍스트 (Preview Text)</span>
+  </div>
+
+  <hr>
+
+  <div class="btns">
+    <button id="btnReset">속성 초기화</button>
+    <button id="btnCancel">취소</button>
+    <button id="btnSave">저장</button>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const elFont      = document.getElementById('fontFamily');
+    const elFontSize  = document.getElementById('fontSize');
+    const elBold      = document.getElementById('bold');
+    const elUnderline = document.getElementById('underline');
+    const elColor     = document.getElementById('color');
+    const preview     = document.getElementById('preview');
+
+    const DEFAULTS = {
+      fontFamily: 'Malgun Gothic',
+      fontSize:   8,
+      bold:       false,
+      underline:  false,
+      color:      '#333333',
+    };
+
+    function applyToForm(data) {
+      elFont.value        = data.fontFamily ?? DEFAULTS.fontFamily;
+      elFontSize.value    = data.fontSize   ?? DEFAULTS.fontSize;
+      elBold.checked      = data.bold       ?? DEFAULTS.bold;
+      elUnderline.checked = data.underline  ?? DEFAULTS.underline;
+      elColor.value       = data.color      ?? DEFAULTS.color;
+      updatePreview();
+    }
+
+    function updatePreview() {
+      preview.style.fontFamily     = `'${elFont.value}', sans-serif`;
+      preview.style.fontSize       = `${elFontSize.value}pt`;
+      preview.style.fontWeight     = elBold.checked ? 'bold' : 'normal';
+      preview.style.textDecoration = elUnderline.checked ? 'underline' : 'none';
+      preview.style.color          = elColor.value;
+    }
+
+    // 초기 값 수신
+    ipcRenderer.on('init-formatter', (_e, data) => applyToForm(data));
+
+    // 실시간 미리보기
+    [elFont, elFontSize, elBold, elUnderline, elColor].forEach(el => {
+      el.addEventListener('input',  updatePreview);
+      el.addEventListener('change', updatePreview);
+    });
+
+    // 속성 초기화
+    document.getElementById('btnReset').addEventListener('click', () => applyToForm(DEFAULTS));
+
+    // 저장
+    document.getElementById('btnSave').addEventListener('click', () => {
+      ipcRenderer.send('formatter-apply', {
+        fontFamily: elFont.value,
+        fontSize:   parseInt(elFontSize.value, 10) || DEFAULTS.fontSize,
+        bold:       elBold.checked,
+        underline:  elUnderline.checked,
+        color:      elColor.value,
+      });
+    });
+
+    // 취소
+    document.getElementById('btnCancel').addEventListener('click', () => {
+      ipcRenderer.send('formatter-cancel');
+    });
+
+    // 단축키: ESC → 취소, Ctrl+Enter → 저장
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') ipcRenderer.send('formatter-cancel');
+      if (e.key === 'Enter' && e.ctrlKey) document.getElementById('btnSave').click();
+    });
+  </script>
+</body>
+</html>

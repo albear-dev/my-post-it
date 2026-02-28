@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>포스트잇 속성</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 9pt;
+      background: #f5f5f5;
+      padding: 16px 20px;
+      user-select: none;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .row label {
+      width: 72px;
+      font-weight: bold;
+      color: #444;
+      flex-shrink: 0;
+    }
+
+    .row input, .row select {
+      flex: 1;
+      padding: 5px 8px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 9pt;
+    }
+
+    .row input:focus, .row select:focus {
+      outline: none;
+      border-color: #5c9eff;
+      box-shadow: 0 0 3px rgba(92, 158, 255, 0.4);
+    }
+
+    /* 우선순위 select 옵션별 색상 */
+    select option[value="1"] { color: #e53935; }
+    select option[value="2"] { color: #f9a825; }
+    select option[value="3"] { color: #1e88e5; }
+    select option[value="4"] { color: #43a047; }
+    select option[value="5"] { color: #888888; }
+
+    /* 알림 체크박스 */
+    .alarm-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 4px;
+    }
+    .alarm-wrap input[type="checkbox"] {
+      flex: none;
+      width: 14px;
+      height: 14px;
+    }
+    .alarm-wrap span {
+      font-size: 9pt;
+      color: #555;
+    }
+    .alarm-wrap span.disabled { color: #bbb; }
+
+    /* 요일 반복 선택 */
+    .days-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .days-row label {
+      width: 72px;
+      font-weight: bold;
+      color: #444;
+      flex-shrink: 0;
+    }
+    .days-wrap {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+    }
+    .day-btn {
+      width: 32px;
+      height: 26px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 8.5pt;
+      color: #555;
+    }
+    .day-btn:hover { background: #eef4ff; border-color: #88b; }
+    .day-btn.selected {
+      background: #4a8df8;
+      color: #fff;
+      border-color: #4a8df8;
+      font-weight: bold;
+    }
+
+    /* 구분선 */
+    hr {
+      border: none;
+      border-top: 1px solid #ddd;
+      margin: 14px 0;
+    }
+
+    /* 색상 프리셋 */
+    .color-presets {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .color-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .color-swatch:hover { border-color: #888; }
+    .color-swatch.selected { border-color: #333; box-shadow: 0 0 4px rgba(0,0,0,0.3); }
+
+    .color-custom {
+      width: 24px;
+      height: 24px;
+      border: 1px dashed #aaa;
+      border-radius: 50%;
+      cursor: pointer;
+      padding: 0;
+      background: linear-gradient(135deg, #f88, #8f8, #88f);
+      position: relative;
+      overflow: hidden;
+    }
+    .color-custom input[type="color"] {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+
+    /* 버튼 영역 */
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .buttons button {
+      padding: 6px 18px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 9pt;
+    }
+
+    .buttons button:hover { background: #eee; }
+
+    #btnSave {
+      background: #4a8df8;
+      color: #fff;
+      border-color: #4a8df8;
+    }
+    #btnSave:hover { background: #3a7de8; }
+
+    #btnReset {
+      margin-right: auto;
+      color: #777;
+      border-color: #ccc;
+    }
+    #btnReset:hover { background: #fee; color: #c33; border-color: #c33; }
+  </style>
+</head>
+<body>
+
+  <div class="row">
+    <label>날짜</label>
+    <input type="date" id="inputDate">
+  </div>
+
+  <div class="row">
+    <label>시간</label>
+    <select id="selectHour">
+      <option value="">--</option>
+      <option value="00">00</option><option value="01">01</option>
+      <option value="02">02</option><option value="03">03</option>
+      <option value="04">04</option><option value="05">05</option>
+      <option value="06">06</option><option value="07">07</option>
+      <option value="08">08</option><option value="09">09</option>
+      <option value="10">10</option><option value="11">11</option>
+      <option value="12">12</option><option value="13">13</option>
+      <option value="14">14</option><option value="15">15</option>
+      <option value="16">16</option><option value="17">17</option>
+      <option value="18">18</option><option value="19">19</option>
+      <option value="20">20</option><option value="21">21</option>
+      <option value="22">22</option><option value="23">23</option>
+    </select>
+    <span style="margin: 0 4px; font-weight: bold;">:</span>
+    <select id="selectMin">
+      <option value="">--</option>
+      <option value="00">00</option>
+      <option value="15">15</option>
+      <option value="30">30</option>
+      <option value="45">45</option>
+    </select>
+    <div class="alarm-wrap">
+      <input type="checkbox" id="checkAlarm">
+      <span id="alarmLabel">알림</span>
+    </div>
+  </div>
+
+  <div class="days-row">
+    <label>반복</label>
+    <div class="days-wrap">
+      <button type="button" class="day-btn" data-day="1">월</button>
+      <button type="button" class="day-btn" data-day="2">화</button>
+      <button type="button" class="day-btn" data-day="3">수</button>
+      <button type="button" class="day-btn" data-day="4">목</button>
+      <button type="button" class="day-btn" data-day="5">금</button>
+      <button type="button" class="day-btn" data-day="6">토</button>
+      <button type="button" class="day-btn" data-day="0">일</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="row">
+    <label>우선순위</label>
+    <select id="selectPriority">
+      <option value="1">1. 긴급</option>
+      <option value="2">2. 우선</option>
+      <option value="3" selected>3. 보통</option>
+      <option value="4">4. 천천히</option>
+      <option value="5">5. 가끔</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label>색상</label>
+    <div class="color-presets" id="colorPresets">
+      <div class="color-swatch selected" data-color="#ffff99" style="background:#ffff99;" title="노랑"></div>
+      <div class="color-swatch" data-color="#ffcccc" style="background:#ffcccc;" title="분홍"></div>
+      <div class="color-swatch" data-color="#ccddff" style="background:#ccddff;" title="파랑"></div>
+      <div class="color-swatch" data-color="#ccffcc" style="background:#ccffcc;" title="초록"></div>
+      <div class="color-swatch" data-color="#e0ccff" style="background:#e0ccff;" title="보라"></div>
+      <div class="color-swatch" data-color="#ffe0b2" style="background:#ffe0b2;" title="주황"></div>
+      <div class="color-swatch" data-color="#ccffff" style="background:#ccffff;" title="하늘"></div>
+      <div class="color-swatch" data-color="#e0e0e0" style="background:#e0e0e0;" title="회색"></div>
+      <div class="color-custom" title="직접 선택">
+        <input type="color" id="inputColorCustom" value="#ffff99">
+      </div>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button id="btnReset">초기화</button>
+    <button id="btnCancel">취소</button>
+    <button id="btnSave">저장</button>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const inputDate      = document.getElementById('inputDate');
+    const selectHour     = document.getElementById('selectHour');
+    const selectMin      = document.getElementById('selectMin');
+    const selectPriority = document.getElementById('selectPriority');
+    const checkAlarm     = document.getElementById('checkAlarm');
+    const alarmLabel     = document.getElementById('alarmLabel');
+    const inputColorCustom = document.getElementById('inputColorCustom');
+
+    let selectedColor = '#ffff99';
+    let selectedDays  = [];  // 반복 요일 (0=일, 1=월, ..., 6=토)
+
+    const DEFAULTS = { date: '', time: '', priority: 3, alarm: false, color: '#ffff99', alarmDays: [] };
+
+    // ── 알림 체크박스 활성/비활성 (시간만 있으면 활성) ──
+    function updateAlarmState() {
+      const hasTime = selectHour.value && selectMin.value;
+      checkAlarm.disabled = !hasTime;
+      alarmLabel.className = hasTime ? '' : 'disabled';
+      if (!hasTime) checkAlarm.checked = false;
+    }
+
+    selectHour.addEventListener('change', updateAlarmState);
+    selectMin.addEventListener('change', updateAlarmState);
+
+    // ── 요일 토글 버튼 ──────────────────────
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const day = parseInt(btn.dataset.day, 10);
+        const idx = selectedDays.indexOf(day);
+        if (idx >= 0) {
+          selectedDays.splice(idx, 1);
+          btn.classList.remove('selected');
+        } else {
+          selectedDays.push(day);
+          btn.classList.add('selected');
+        }
+      });
+    });
+
+    // ── 색상 프리셋 선택 ──────────────────────
+    document.querySelectorAll('.color-swatch').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedColor = el.dataset.color;
+        inputColorCustom.value = selectedColor;
+      });
+    });
+
+    inputColorCustom.addEventListener('input', () => {
+      selectedColor = inputColorCustom.value;
+      // 커스텀 선택 시 프리셋 해제
+      document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('selected', s.dataset.color === selectedColor);
+      });
+    });
+
+    // ── Form 적용 / 수집 ─────────────────────
+    function applyToForm(data) {
+      inputDate.value = data.date || '';
+      if (data.time) {
+        const [h, m] = data.time.split(':');
+        selectHour.value = h || '';
+        selectMin.value  = m || '';
+      } else {
+        selectHour.value = '';
+        selectMin.value  = '';
+      }
+      selectPriority.value = String(data.priority ?? 3);
+      checkAlarm.checked   = data.alarm || false;
+
+      // 색상
+      selectedColor = data.color || '#ffff99';
+      inputColorCustom.value = selectedColor;
+      document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('selected', s.dataset.color === selectedColor);
+      });
+
+      // 요일 반복
+      selectedDays = (data.alarmDays || []).slice();
+      document.querySelectorAll('.day-btn').forEach(btn => {
+        const day = parseInt(btn.dataset.day, 10);
+        btn.classList.toggle('selected', selectedDays.includes(day));
+      });
+
+      updateAlarmState();
+    }
+
+    function getFormData() {
+      const h = selectHour.value;
+      const m = selectMin.value;
+      const time = (h && m) ? `${h}:${m}` : '';
+      return {
+        date:      inputDate.value,
+        time,
+        priority:  parseInt(selectPriority.value, 10),
+        alarm:     checkAlarm.checked,
+        alarmDays: selectedDays.slice().sort(),
+        color:     selectedColor,
+      };
+    }
+
+    // ── IPC ──────────────────────────────────
+    ipcRenderer.on('init-properties', (_e, data) => {
+      applyToForm(data);
+    });
+
+    document.getElementById('btnSave').addEventListener('click', () => {
+      ipcRenderer.send('properties-save', getFormData());
+    });
+
+    document.getElementById('btnCancel').addEventListener('click', () => {
+      ipcRenderer.send('properties-cancel');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      applyToForm(DEFAULTS);
+    });
+
+    // 키보드 단축키
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        ipcRenderer.send('properties-cancel');
+      } else if (e.ctrlKey && e.key === 'Enter') {
+        ipcRenderer.send('properties-save', getFormData());
+      }
+    });
+  </script>
+</body>
+</html>

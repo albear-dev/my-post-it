@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>알림</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 9pt;
+      background: #fff;
+      overflow: hidden;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      animation: slideUp 0.35s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* 헤더 */
+    .header {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px 4px;
+      gap: 6px;
+    }
+
+    .priority-badge {
+      font-size: 11px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .title {
+      flex: 1;
+      font-size: 11px;
+      font-weight: bold;
+      color: #333;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .close-btn {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+    .close-btn:hover { background: #eee; color: #333; }
+
+    /* 날짜/시간 정보 */
+    .info {
+      padding: 2px 10px 6px;
+      font-size: 10px;
+      color: #888;
+    }
+
+    /* 내용 미리보기 */
+    .preview {
+      padding: 0 10px 8px;
+      font-size: 9pt;
+      color: #555;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-height: 20px;
+    }
+
+    /* 버튼 영역 */
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      padding: 4px 10px 10px;
+      border-top: 1px solid #eee;
+    }
+
+    .buttons button {
+      padding: 5px 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 9pt;
+    }
+    .buttons button:hover { background: #f0f0f0; }
+
+    #btnSnooze {
+      background: #4a8df8;
+      color: #fff;
+      border-color: #4a8df8;
+    }
+    #btnSnooze:hover { background: #3a7de8; }
+
+    #btnCancel {
+      color: #c33;
+      border-color: #c33;
+    }
+    #btnCancel:hover { background: #fee; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="priority-badge" id="priorityBadge"></span>
+    <span class="title" id="titleText"></span>
+    <button class="close-btn" id="btnDismiss" title="무시 (닫기)">✕</button>
+  </div>
+  <div class="info" id="infoText"></div>
+  <div class="preview" id="previewText"></div>
+  <div class="buttons">
+    <button id="btnCancel">알림 해제</button>
+    <button id="btnSnooze">30분 연기</button>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const PRIORITY_LABELS = { 1: '긴급', 2: '우선', 3: '보통', 4: '천천히', 5: '가끔' };
+    const PRIORITY_COLORS = { 1: '#e53935', 2: '#f9a825', 3: '#1e88e5', 4: '#43a047', 5: '#888888' };
+    const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+    let postitId = null;
+
+    ipcRenderer.on('init-notification', (_e, data) => {
+      postitId = data.id;
+
+      const p = data.priority ?? 3;
+      const badge = document.getElementById('priorityBadge');
+      badge.textContent = `[${p}]`;
+      badge.style.color = PRIORITY_COLORS[p] || '#1e88e5';
+
+      // 타이틀: 첫 줄 텍스트
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = data.content || '';
+      const firstLine = tempDiv.innerText.split('\n').find(l => l.trim()) || '(빈 메모)';
+      document.getElementById('titleText').textContent = firstLine;
+
+      // 날짜/시간/요일 정보
+      const parts = [];
+      const alarmDays = data.alarmDays || [];
+      if (alarmDays.length > 0) {
+        const dayNames = alarmDays.sort((a, b) => a - b).map(d => DAY_LABELS[d]);
+        parts.push(`매주 ${dayNames.join(',')}`);
+      } else if (data.date) {
+        parts.push(data.date);
+      } else {
+        parts.push('매일');
+      }
+      if (data.time) parts.push(data.time);
+      document.getElementById('infoText').textContent = parts.join(' ') || '';
+
+      // 내용 미리보기 (첫 줄 이후)
+      const lines = tempDiv.innerText.split('\n').filter(l => l.trim());
+      document.getElementById('previewText').textContent = lines.length > 1 ? lines[1] : '';
+    });
+
+    document.getElementById('btnSnooze').addEventListener('click', () => {
+      if (postitId) ipcRenderer.send('notification-snooze', { id: postitId });
+    });
+
+    document.getElementById('btnCancel').addEventListener('click', () => {
+      if (postitId) ipcRenderer.send('notification-cancel', { id: postitId });
+    });
+
+    document.getElementById('btnDismiss').addEventListener('click', () => {
+      if (postitId) ipcRenderer.send('notification-dismiss', { id: postitId });
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (postitId) ipcRenderer.send('notification-dismiss', { id: postitId });
+      }
+    });
+  </script>
+</body>
+</html>
