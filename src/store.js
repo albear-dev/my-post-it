@@ -82,6 +82,26 @@ class PostitStore {
     delete this.data.postits[id];
     this._save();
   }
+
+  /**
+   * 앱 설정값을 조회한다.
+   * @param {string} key - 설정 키
+   * @returns {*} 설정값 (없으면 undefined)
+   */
+  getSetting(key) {
+    return this.data.settings && this.data.settings[key];
+  }
+
+  /**
+   * 앱 설정값을 저장한다.
+   * @param {string} key - 설정 키
+   * @param {*} val - 설정값
+   */
+  setSetting(key, val) {
+    if (!this.data.settings) this.data.settings = {};
+    this.data.settings[key] = val;
+    this._save();
+  }
 }
 
 module.exports = PostitStore;

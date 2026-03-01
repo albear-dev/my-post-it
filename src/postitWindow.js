@@ -9,6 +9,7 @@ const { BrowserWindow, dialog } = require('electron');
 const path = require('path');
 
 const state = require('./state');
+const i18n = require('./i18n');
 const { HEADER_HEIGHT, DEFAULT_WIDTH, DEFAULT_HEIGHT, SNAP_THRESHOLD } = require('./constants');
 
 // ─── 유틸리티 ──────────────────────────────────────────────────────────────────
@@ -151,6 +152,11 @@ function createPostitWindow(postit) {
 
   win.loadURL(`file://${path.join(__dirname, '..', 'index.html')}?id=${postit.id}`);
 
+  // 번역 데이터 전송
+  win.webContents.once('did-finish-load', () => {
+    win.webContents.send('set-translations', i18n.getAllTranslations());
+  });
+
   // 이동 후: 자석 스냅 → 위치 저장 (수동 드래그 중에는 스킵)
   win.on('moved', () => {
     if (!state.windows.has(postit.id)) return;
@@ -271,10 +277,10 @@ async function confirmAndDelete(id) {
 
   const { response } = await dialog.showMessageBox(win, {
     type:      'question',
-    buttons:   ['삭제', '취소'],
+    buttons:   [i18n.t('dialog.delete'), i18n.t('dialog.cancel')],
     defaultId: 1,
     cancelId:  1,
-    message:   '이 포스트잇을 삭제할까요?',
+    message:   i18n.t('dialog.deleteConfirm'),
   });
 
   if (response === 0) {

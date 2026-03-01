@@ -21,6 +21,7 @@ const { app } = require('electron');
 
 const PostitStore = require('./src/store');
 const state = require('./src/state');
+const i18n = require('./src/i18n');
 const { createPostitWindow, createNewPostit } = require('./src/postitWindow');
 const { createTray } = require('./src/tray');
 const { checkAlarms, registerAlarmIpc } = require('./src/alarm');
@@ -42,6 +43,7 @@ registerDialogIpc();
 app.whenReady().then(() => {
   state.store = new PostitStore();
   state.store.init();
+  i18n.init(state.store.getSetting('locale') || 'en');
   createTray();
 
   const postits = state.store.getAll();

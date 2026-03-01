@@ -8,6 +8,7 @@
 const { BrowserWindow, ipcMain, Menu } = require('electron');
 
 const state = require('./state');
+const i18n = require('./i18n');
 
 /**
  * 기본 포스트잇 IPC 핸들러 + 컨텍스트 메뉴를 등록한다.
@@ -69,30 +70,30 @@ function registerIpcHandlers() {
    */
   ipcMain.on('show-context-menu', (event, { id, hasSelection, formatting, inEditor }) => {
     const items = [
-      { label: '새 포스트잇 생성', click: () => createNewPostit() },
+      { label: i18n.t('menu.newPostit'), click: () => createNewPostit() },
     ];
 
     if (inEditor) {
       items.push({ type: 'separator' });
-      items.push({ label: '잘라내기',  role: 'cut'   });
-      items.push({ label: '복사',      role: 'copy'  });
-      items.push({ label: '붙여넣기',  role: 'paste' });
+      items.push({ label: i18n.t('menu.cut'),   role: 'cut'   });
+      items.push({ label: i18n.t('menu.copy'),  role: 'copy'  });
+      items.push({ label: i18n.t('menu.paste'), role: 'paste' });
 
       if (hasSelection) {
         items.push({ type: 'separator' });
         items.push({
-          label: '속성 변경',
+          label: i18n.t('menu.formatting'),
           click: () => openFormatter(event.sender, formatting),
         });
       }
     }
 
     items.push({ type: 'separator' });
-    items.push({ label: '포스트잇 속성', click: () => openProperties(id) });
-    items.push({ label: '전체 목록',     click: () => openManager() });
+    items.push({ label: i18n.t('menu.properties'), click: () => openProperties(id) });
+    items.push({ label: i18n.t('menu.allList'),     click: () => openManager() });
     items.push({ type: 'separator' });
-    items.push({ label: '숨기기', click: () => hidePostit(id) });
-    items.push({ label: '이 포스트잇 삭제', click: () => confirmAndDelete(id) });
+    items.push({ label: i18n.t('menu.hide'), click: () => hidePostit(id) });
+    items.push({ label: i18n.t('menu.deleteThis'), click: () => confirmAndDelete(id) });
 
     Menu.buildFromTemplate(items).popup({ window: BrowserWindow.fromWebContents(event.sender) });
   });

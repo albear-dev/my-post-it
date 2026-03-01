@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>포스트잇 전체 목록</title>
+  <title>All Postits</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -126,7 +126,7 @@
     #postit-table tbody tr.hidden-row { opacity: 0.55; }
 
     .col-check    { width: 32px; text-align: center; }
-    .col-priority { width: 72px; }
+    .col-priority { width: 100px; }
     .col-date     { width: 130px; }
     .col-time     { width: 56px; }
     .col-title    { }
@@ -152,22 +152,22 @@
 <body>
 
   <div id="toolbar">
-    <button id="btnNew" title="새 포스트잇">+ 새 포스트잇</button>
+    <button id="btnNew" data-i18n="manager.newPostit">+ New Postit</button>
     <div class="toolbar-sep"></div>
-    <button id="btnHide" title="선택 숨기기" disabled>숨기기</button>
-    <button id="btnUnhide" title="선택 보이기" disabled>보이기</button>
-    <button id="btnDelete" title="선택 삭제" disabled>삭제</button>
+    <button id="btnHide" disabled data-i18n="manager.hide">Hide</button>
+    <button id="btnUnhide" disabled data-i18n="manager.unhide">Show</button>
+    <button id="btnDelete" disabled data-i18n="manager.delete">Delete</button>
     <div class="toolbar-sep"></div>
-    <button id="btnShowAll" title="전체 보이기">전체 보이기</button>
-    <button id="btnHideAll" title="전체 숨기기">전체 숨기기</button>
+    <button id="btnShowAll" data-i18n="manager.showAll">Show All</button>
+    <button id="btnHideAll" data-i18n="manager.hideAll">Hide All</button>
     <div class="toolbar-spacer"></div>
-    <input type="text" id="searchInput" placeholder="검색...">
+    <input type="text" id="searchInput" data-i18n-placeholder="manager.search" placeholder="Search...">
   </div>
 
   <div id="summary">
-    전체: <span id="countTotal">0</span>
-    | 표시: <span id="countVisible">0</span>
-    | 숨김: <span id="countHidden">0</span>
+    <span data-i18n="manager.total">Total:</span> <span id="countTotal">0</span>
+    | <span data-i18n="manager.visible">Visible:</span> <span id="countVisible">0</span>
+    | <span data-i18n="manager.hidden">Hidden:</span> <span id="countHidden">0</span>
   </div>
 
   <div id="table-wrap">
@@ -175,21 +175,36 @@
       <thead>
         <tr>
           <th class="col-check"><input type="checkbox" id="checkAll"></th>
-          <th class="col-priority sortable sort-asc" data-sort="priority">우선순위</th>
-          <th class="col-date sortable" data-sort="date">날짜</th>
-          <th class="col-time sortable" data-sort="time">시간</th>
-          <th class="col-title sortable" data-sort="title">타이틀</th>
-          <th class="col-alarm sortable" data-sort="alarm">알림</th>
-          <th class="col-hidden sortable" data-sort="hidden">숨김</th>
+          <th class="col-priority sortable sort-asc" data-sort="priority" data-i18n="manager.colPriority">Priority</th>
+          <th class="col-date sortable" data-sort="date" data-i18n="manager.colDate">Date</th>
+          <th class="col-time sortable" data-sort="time" data-i18n="manager.colTime">Time</th>
+          <th class="col-title sortable" data-sort="title" data-i18n="manager.colTitle">Title</th>
+          <th class="col-alarm sortable" data-sort="alarm" data-i18n="manager.colAlarm">Alarm</th>
+          <th class="col-hidden sortable" data-sort="hidden" data-i18n="manager.colHidden">Hidden</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
     </table>
-    <div id="empty-msg" style="display:none;">포스트잇이 없습니다.</div>
+    <div id="empty-msg" style="display:none;" data-i18n="manager.empty">No postits.</div>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
+
+    // ── i18n ─────────────────────────────────────────────
+    let _translations = {};
+    function t(key, params) {
+      let str = _translations[key] || key;
+      if (params) Object.entries(params).forEach(([k,v]) => { str = str.replace(`{${k}}`, v); });
+      return str;
+    }
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+      renderTable();
+    }
+    ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
 
     // ── State ──────────────────────────────
     let allPostits    = [];
@@ -197,10 +212,6 @@
     let sortDir       = 'asc';
     let searchKeyword = '';
 
-    const PRIORITY_LABELS = {
-      1: '1. 긴급', 2: '2. 우선', 3: '3. 보통',
-      4: '4. 천천히', 5: '5. 가끔',
-    };
     const PRIORITY_COLORS = {
       1: '#e53935', 2: '#f9a825', 3: '#1e88e5',
       4: '#43a047', 5: '#888888',
@@ -228,7 +239,7 @@
     function extractTitle(html) {
       const text = stripHtml(html);
       const first = text.split('\n').find(l => l.trim());
-      return first ? first.trim() : '(빈 메모)';
+      return first ? first.trim() : t('postit.empty');
     }
 
     function calcDday(dateStr) {
@@ -310,7 +321,7 @@
         // 우선순위
         const tdPri = document.createElement('td');
         tdPri.className = 'col-priority';
-        tdPri.textContent = PRIORITY_LABELS[p.priority ?? 3] || '3. 보통';
+        tdPri.textContent = t(`priority.${p.priority ?? 3}`);
         tdPri.style.color = PRIORITY_COLORS[p.priority ?? 3] || '#1e88e5';
         tdPri.style.fontWeight = 'bold';
         tr.appendChild(tdPri);
@@ -345,15 +356,14 @@
         tdAlarm.className = 'col-alarm';
         if (p.alarm) {
           const alarmDays = p.alarmDays || [];
-          const DAY_SHORT = ['일','월','화','수','목','금','토'];
           if (alarmDays.length > 0) {
-            const dayStr = alarmDays.sort((a,b) => a-b).map(d => DAY_SHORT[d]).join('');
+            const dayStr = alarmDays.sort((a,b) => a-b).map(d => t(`day.${d}`)).join('');
             tdAlarm.textContent = dayStr;
-            tdAlarm.title = `매주 ${dayStr}`;
+            tdAlarm.title = `${t('notification.weekly')} ${dayStr}`;
           } else if (!p.date) {
-            tdAlarm.textContent = '매일';
+            tdAlarm.textContent = t('notification.daily');
           } else {
-            tdAlarm.textContent = 'ON';
+            tdAlarm.textContent = t('manager.alarmOn');
           }
           tdAlarm.style.color = '#4a8df8';
           tdAlarm.style.fontWeight = 'bold';
@@ -365,7 +375,7 @@
         // 숨김 여부
         const tdHidden = document.createElement('td');
         tdHidden.className = 'col-hidden';
-        tdHidden.textContent = p.hidden ? '숨김' : '';
+        tdHidden.textContent = p.hidden ? t('manager.hiddenStatus') : '';
         tdHidden.style.color = p.hidden ? '#c00' : '';
         tr.appendChild(tdHidden);
 

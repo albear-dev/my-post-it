@@ -13,6 +13,7 @@ const { BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 
 const state = require('./state');
+const i18n = require('./i18n');
 
 // ─── 알림 스케줄러 ─────────────────────────────────────────────────────────────
 
@@ -129,6 +130,7 @@ function showNotification(postit) {
   nwin.loadFile(path.join(__dirname, '..', 'notification.html'));
 
   nwin.webContents.once('did-finish-load', () => {
+    nwin.webContents.send('set-translations', i18n.getAllTranslations());
     nwin.webContents.send('init-notification', {
       id:        postit.id,
       content:   postit.content || '',

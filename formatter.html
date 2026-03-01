@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>속성 변경</title>
+  <title>Change Formatting</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -121,58 +121,71 @@
   </style>
 </head>
 <body>
-  <!-- 글꼴 -->
+  <!-- Font -->
   <div class="row">
-    <span class="lbl">글꼴</span>
+    <span class="lbl" data-i18n="formatter.font">Font</span>
     <select id="fontFamily">
-      <option value="Malgun Gothic" style="font-family:'Malgun Gothic'">맑은 고딕</option>
-      <option value="Gulim"         style="font-family:Gulim">굴림</option>
-      <option value="Dotum"         style="font-family:Dotum">돋움</option>
-      <option value="Batang"        style="font-family:Batang">바탕</option>
-      <option value="Gungsuh"       style="font-family:Gungsuh">궁서</option>
+      <option value="Malgun Gothic" style="font-family:'Malgun Gothic'" data-i18n="font.malgunGothic">Malgun Gothic</option>
+      <option value="Gulim"         style="font-family:Gulim" data-i18n="font.gulim">Gulim</option>
+      <option value="Dotum"         style="font-family:Dotum" data-i18n="font.dotum">Dotum</option>
+      <option value="Batang"        style="font-family:Batang" data-i18n="font.batang">Batang</option>
+      <option value="Gungsuh"       style="font-family:Gungsuh" data-i18n="font.gungsuh">Gungsuh</option>
       <option value="Arial"         style="font-family:Arial">Arial</option>
       <option value="Times New Roman" style="font-family:'Times New Roman'">Times New Roman</option>
       <option value="Courier New"   style="font-family:'Courier New'">Courier New</option>
     </select>
   </div>
 
-  <!-- 글자 크기 -->
+  <!-- Font Size -->
   <div class="row">
-    <span class="lbl">글자 크기</span>
+    <span class="lbl" data-i18n="formatter.fontSize">Font Size</span>
     <input type="number" id="fontSize" min="6" max="144" value="8">
     <span class="unit">pt</span>
   </div>
 
-  <!-- 스타일 -->
+  <!-- Style -->
   <div class="row">
-    <span class="lbl">스타일</span>
+    <span class="lbl" data-i18n="formatter.style">Style</span>
     <div class="checkboxes">
-      <label class="chk-label"><input type="checkbox" id="bold"> 굵게</label>
-      <label class="chk-label"><input type="checkbox" id="underline"> 밑줄</label>
+      <label class="chk-label"><input type="checkbox" id="bold"> <span data-i18n="formatter.bold">Bold</span></label>
+      <label class="chk-label"><input type="checkbox" id="underline"> <span data-i18n="formatter.underline">Underline</span></label>
     </div>
   </div>
 
-  <!-- 글자색 -->
+  <!-- Font Color -->
   <div class="row">
-    <span class="lbl">글자색</span>
+    <span class="lbl" data-i18n="formatter.fontColor">Font Color</span>
     <input type="color" id="color" value="#333333">
   </div>
 
-  <!-- 미리보기 -->
+  <!-- Preview -->
   <div class="preview-wrap">
-    <span id="preview">미리보기 텍스트 (Preview Text)</span>
+    <span id="preview" data-i18n="formatter.preview">Preview Text</span>
   </div>
 
   <hr>
 
   <div class="btns">
-    <button id="btnReset">속성 초기화</button>
-    <button id="btnCancel">취소</button>
-    <button id="btnSave">저장</button>
+    <button id="btnReset" data-i18n="formatter.reset">Reset Formatting</button>
+    <button id="btnCancel" data-i18n="formatter.cancel">Cancel</button>
+    <button id="btnSave" data-i18n="formatter.save">Save</button>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
+
+    // ── i18n ─────────────────────────────────────────────
+    let _translations = {};
+    function t(key, params) {
+      let str = _translations[key] || key;
+      if (params) Object.entries(params).forEach(([k,v]) => { str = str.replace(`{${k}}`, v); });
+      return str;
+    }
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+    }
+    ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
 
     const elFont      = document.getElementById('fontFamily');
     const elFontSize  = document.getElementById('fontSize');

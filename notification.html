@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>알림</title>
+  <title>Notification</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -117,55 +117,69 @@
   <div class="header">
     <span class="priority-badge" id="priorityBadge"></span>
     <span class="title" id="titleText"></span>
-    <button class="close-btn" id="btnDismiss" title="무시 (닫기)">✕</button>
+    <button class="close-btn" id="btnDismiss" data-i18n-title="notification.dismiss" title="Dismiss (Close)">✕</button>
   </div>
   <div class="info" id="infoText"></div>
   <div class="preview" id="previewText"></div>
   <div class="buttons">
-    <button id="btnCancel">알림 해제</button>
-    <button id="btnSnooze">30분 연기</button>
+    <button id="btnCancel" data-i18n="notification.cancelAlarm">Cancel Alarm</button>
+    <button id="btnSnooze" data-i18n="notification.snooze">Snooze 30min</button>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
-    const PRIORITY_LABELS = { 1: '긴급', 2: '우선', 3: '보통', 4: '천천히', 5: '가끔' };
+    // ── i18n ─────────────────────────────────────────────
+    let _translations = {};
+    function t(key, params) {
+      let str = _translations[key] || key;
+      if (params) Object.entries(params).forEach(([k,v]) => { str = str.replace(`{${k}}`, v); });
+      return str;
+    }
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+      if (_notifData) renderNotification(_notifData);
+    }
+    ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
+
     const PRIORITY_COLORS = { 1: '#e53935', 2: '#f9a825', 3: '#1e88e5', 4: '#43a047', 5: '#888888' };
-    const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
     let postitId = null;
+    let _notifData = null;
 
-    ipcRenderer.on('init-notification', (_e, data) => {
-      postitId = data.id;
-
+    function renderNotification(data) {
       const p = data.priority ?? 3;
       const badge = document.getElementById('priorityBadge');
       badge.textContent = `[${p}]`;
       badge.style.color = PRIORITY_COLORS[p] || '#1e88e5';
 
-      // 타이틀: 첫 줄 텍스트
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = data.content || '';
-      const firstLine = tempDiv.innerText.split('\n').find(l => l.trim()) || '(빈 메모)';
+      const firstLine = tempDiv.innerText.split('\n').find(l => l.trim()) || t('postit.empty');
       document.getElementById('titleText').textContent = firstLine;
 
-      // 날짜/시간/요일 정보
       const parts = [];
       const alarmDays = data.alarmDays || [];
       if (alarmDays.length > 0) {
-        const dayNames = alarmDays.sort((a, b) => a - b).map(d => DAY_LABELS[d]);
-        parts.push(`매주 ${dayNames.join(',')}`);
+        const dayNames = alarmDays.sort((a, b) => a - b).map(d => t(`day.${d}`));
+        parts.push(`${t('notification.weekly')} ${dayNames.join(',')}`);
       } else if (data.date) {
         parts.push(data.date);
       } else {
-        parts.push('매일');
+        parts.push(t('notification.daily'));
       }
       if (data.time) parts.push(data.time);
       document.getElementById('infoText').textContent = parts.join(' ') || '';
 
-      // 내용 미리보기 (첫 줄 이후)
       const lines = tempDiv.innerText.split('\n').filter(l => l.trim());
       document.getElementById('previewText').textContent = lines.length > 1 ? lines[1] : '';
+    }
+
+    ipcRenderer.on('init-notification', (_e, data) => {
+      postitId = data.id;
+      _notifData = data;
+      renderNotification(data);
     });
 
     document.getElementById('btnSnooze').addEventListener('click', () => {

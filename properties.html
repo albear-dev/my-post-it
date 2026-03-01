@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>포스트잇 속성</title>
+  <title>Postit Properties</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -189,12 +189,12 @@
 <body>
 
   <div class="row">
-    <label>날짜</label>
+    <label data-i18n="properties.date">Date</label>
     <input type="date" id="inputDate">
   </div>
 
   <div class="row">
-    <label>시간</label>
+    <label data-i18n="properties.time">Time</label>
     <select id="selectHour">
       <option value="">--</option>
       <option value="00">00</option><option value="01">01</option>
@@ -220,61 +220,74 @@
     </select>
     <div class="alarm-wrap">
       <input type="checkbox" id="checkAlarm">
-      <span id="alarmLabel">알림</span>
+      <span id="alarmLabel" data-i18n="properties.alarm">Alarm</span>
     </div>
   </div>
 
   <div class="days-row">
-    <label>반복</label>
+    <label data-i18n="properties.repeat">Repeat</label>
     <div class="days-wrap">
-      <button type="button" class="day-btn" data-day="1">월</button>
-      <button type="button" class="day-btn" data-day="2">화</button>
-      <button type="button" class="day-btn" data-day="3">수</button>
-      <button type="button" class="day-btn" data-day="4">목</button>
-      <button type="button" class="day-btn" data-day="5">금</button>
-      <button type="button" class="day-btn" data-day="6">토</button>
-      <button type="button" class="day-btn" data-day="0">일</button>
+      <button type="button" class="day-btn" data-day="1" data-i18n="day.1">Mon</button>
+      <button type="button" class="day-btn" data-day="2" data-i18n="day.2">Tue</button>
+      <button type="button" class="day-btn" data-day="3" data-i18n="day.3">Wed</button>
+      <button type="button" class="day-btn" data-day="4" data-i18n="day.4">Thu</button>
+      <button type="button" class="day-btn" data-day="5" data-i18n="day.5">Fri</button>
+      <button type="button" class="day-btn" data-day="6" data-i18n="day.6">Sat</button>
+      <button type="button" class="day-btn" data-day="0" data-i18n="day.0">Sun</button>
     </div>
   </div>
 
   <hr>
 
   <div class="row">
-    <label>우선순위</label>
+    <label data-i18n="properties.priority">Priority</label>
     <select id="selectPriority">
-      <option value="1">1. 긴급</option>
-      <option value="2">2. 우선</option>
-      <option value="3" selected>3. 보통</option>
-      <option value="4">4. 천천히</option>
-      <option value="5">5. 가끔</option>
+      <option value="1" data-i18n="priority.1">1. Urgent</option>
+      <option value="2" data-i18n="priority.2">2. High</option>
+      <option value="3" selected data-i18n="priority.3">3. Normal</option>
+      <option value="4" data-i18n="priority.4">4. Low</option>
+      <option value="5" data-i18n="priority.5">5. Occasional</option>
     </select>
   </div>
 
   <div class="row">
-    <label>색상</label>
+    <label data-i18n="properties.color">Color</label>
     <div class="color-presets" id="colorPresets">
-      <div class="color-swatch selected" data-color="#ffff99" style="background:#ffff99;" title="노랑"></div>
-      <div class="color-swatch" data-color="#ffcccc" style="background:#ffcccc;" title="분홍"></div>
-      <div class="color-swatch" data-color="#ccddff" style="background:#ccddff;" title="파랑"></div>
-      <div class="color-swatch" data-color="#ccffcc" style="background:#ccffcc;" title="초록"></div>
-      <div class="color-swatch" data-color="#e0ccff" style="background:#e0ccff;" title="보라"></div>
-      <div class="color-swatch" data-color="#ffe0b2" style="background:#ffe0b2;" title="주황"></div>
-      <div class="color-swatch" data-color="#ccffff" style="background:#ccffff;" title="하늘"></div>
-      <div class="color-swatch" data-color="#e0e0e0" style="background:#e0e0e0;" title="회색"></div>
-      <div class="color-custom" title="직접 선택">
+      <div class="color-swatch selected" data-color="#ffff99" style="background:#ffff99;" data-i18n-title="color.yellow" title="Yellow"></div>
+      <div class="color-swatch" data-color="#ffcccc" style="background:#ffcccc;" data-i18n-title="color.pink" title="Pink"></div>
+      <div class="color-swatch" data-color="#ccddff" style="background:#ccddff;" data-i18n-title="color.blue" title="Blue"></div>
+      <div class="color-swatch" data-color="#ccffcc" style="background:#ccffcc;" data-i18n-title="color.green" title="Green"></div>
+      <div class="color-swatch" data-color="#e0ccff" style="background:#e0ccff;" data-i18n-title="color.purple" title="Purple"></div>
+      <div class="color-swatch" data-color="#ffe0b2" style="background:#ffe0b2;" data-i18n-title="color.orange" title="Orange"></div>
+      <div class="color-swatch" data-color="#ccffff" style="background:#ccffff;" data-i18n-title="color.sky" title="Sky Blue"></div>
+      <div class="color-swatch" data-color="#e0e0e0" style="background:#e0e0e0;" data-i18n-title="color.gray" title="Gray"></div>
+      <div class="color-custom" data-i18n-title="properties.customColor" title="Custom">
         <input type="color" id="inputColorCustom" value="#ffff99">
       </div>
     </div>
   </div>
 
   <div class="buttons">
-    <button id="btnReset">초기화</button>
-    <button id="btnCancel">취소</button>
-    <button id="btnSave">저장</button>
+    <button id="btnReset" data-i18n="properties.reset">Reset</button>
+    <button id="btnCancel" data-i18n="properties.cancel">Cancel</button>
+    <button id="btnSave" data-i18n="properties.save">Save</button>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
+
+    // ── i18n ─────────────────────────────────────────────
+    let _translations = {};
+    function t(key, params) {
+      let str = _translations[key] || key;
+      if (params) Object.entries(params).forEach(([k,v]) => { str = str.replace(`{${k}}`, v); });
+      return str;
+    }
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+    }
+    ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
 
     const inputDate      = document.getElementById('inputDate');
     const selectHour     = document.getElementById('selectHour');

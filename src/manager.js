@@ -9,6 +9,7 @@ const { BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 
 const state = require('./state');
+const i18n = require('./i18n');
 
 // ─── 관리 창 ───────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ function openManager() {
     width: 780, height: 520,
     minWidth: 600, minHeight: 400,
     resizable: true, minimizable: true, maximizable: true,
-    title: '포스트잇 전체 목록',
+    title: i18n.t('window.managerTitle'),
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
@@ -34,6 +35,7 @@ function openManager() {
   state.managerWindow.loadFile(path.join(__dirname, '..', 'manager.html'));
 
   state.managerWindow.webContents.once('did-finish-load', () => {
+    state.managerWindow.webContents.send('set-translations', i18n.getAllTranslations());
     sendManagerData();
   });
 
@@ -97,10 +99,10 @@ function registerManagerIpc() {
     if (!state.managerWindow || state.managerWindow.isDestroyed()) return;
     const { response } = await dialog.showMessageBox(state.managerWindow, {
       type:      'question',
-      buttons:   ['삭제', '취소'],
+      buttons:   [i18n.t('dialog.delete'), i18n.t('dialog.cancel')],
       defaultId: 1,
       cancelId:  1,
-      message:   `선택한 ${ids.length}개 포스트잇을 삭제할까요?`,
+      message:   i18n.t('dialog.deleteMultiConfirm', { count: ids.length }),
     });
     if (response === 0) {
       ids.forEach(id => {

@@ -9,6 +9,7 @@ const { BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
 const state = require('./state');
+const i18n = require('./i18n');
 
 // ─── 포매터 ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ function openFormatter(postitWC, formatting) {
     resizable:   false,
     minimizable: false,
     maximizable: false,
-    title:       '속성 변경',
+    title:       i18n.t('window.formatterTitle'),
     webPreferences: {
       nodeIntegration:  true,
       contextIsolation: false,
@@ -47,6 +48,7 @@ function openFormatter(postitWC, formatting) {
   fwin.loadFile(path.join(__dirname, '..', 'formatter.html'));
 
   fwin.webContents.once('did-finish-load', () => {
+    fwin.webContents.send('set-translations', i18n.getAllTranslations());
     fwin.webContents.send('init-formatter', formatting ?? {
       fontSize: 8, bold: false, underline: false, color: '#333333',
     });
@@ -81,7 +83,7 @@ function openProperties(postitId) {
   const pwin = new BrowserWindow({
     width: 350, height: 380,
     resizable: false, minimizable: false, maximizable: false,
-    title: '포스트잇 속성',
+    title: i18n.t('window.propertiesTitle'),
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
@@ -89,6 +91,7 @@ function openProperties(postitId) {
   pwin.loadFile(path.join(__dirname, '..', 'properties.html'));
 
   pwin.webContents.once('did-finish-load', () => {
+    pwin.webContents.send('set-translations', i18n.getAllTranslations());
     pwin.webContents.send('init-properties', {
       date:      postit.date      || '',
       time:      postit.time      || '',

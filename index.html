@@ -105,7 +105,7 @@
 
     /* placeholder: 에디터가 완전히 비어 있을 때 */
     #editor:empty::before {
-      content: '메모를 입력하세요...';
+      content: var(--placeholder-text, 'Type your note here...');
       color: #bbb060;
       pointer-events: none;
     }
@@ -129,14 +129,14 @@
 </head>
 <body>
   <div id="drag-handle">
-    <button id="btn-fold"   class="handle-btn" title="접기/펴기">▾</button>
+    <button id="btn-fold"   class="handle-btn" data-i18n-title="postit.foldToggle" title="Fold / Unfold">▾</button>
     <div id="title-info">
       <span id="badge-priority" class="badge"></span>
       <span id="badge-dday"     class="badge"></span>
       <span id="badge-time"     class="badge"></span>
       <span id="title-text"></span>
     </div>
-    <button id="btn-delete" class="handle-btn" title="삭제">✕</button>
+    <button id="btn-delete" class="handle-btn" data-i18n-title="postit.delete" title="Delete">✕</button>
   </div>
   <div id="content-area">
     <div id="editor" contenteditable="true" spellcheck="false"></div>
@@ -144,6 +144,21 @@
 
   <script>
     const { ipcRenderer } = require('electron');
+
+    // ── i18n ─────────────────────────────────────────────
+    let _translations = {};
+    function t(key, params) {
+      let str = _translations[key] || key;
+      if (params) Object.entries(params).forEach(([k,v]) => { str = str.replace(`{${k}}`, v); });
+      return str;
+    }
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+      document.documentElement.style.setProperty('--placeholder-text', `'${t('postit.placeholder')}'`);
+      updateTitleInfo();
+    }
+    ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
 
     const postitId       = new URLSearchParams(window.location.search).get('id');
     const editor         = document.getElementById('editor');
@@ -242,7 +257,7 @@
         .replace(/&nbsp;/g, ' ')
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
       const first = plainText.split('\n').find(l => l.trim()) || '';
-      titleText.textContent = first || '(빈 메모)';
+      titleText.textContent = first || t('postit.empty');
     }
 
     // D-Day 자동 재계산 (1시간 주기)
