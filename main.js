@@ -17,7 +17,7 @@
  * - src/ipc.js          : 기본 IPC·컨텍스트 메뉴
  */
 
-const { app } = require('electron');
+const { app, globalShortcut } = require('electron');
 
 const PostitStore = require('./src/store');
 const state = require('./src/state');
@@ -45,6 +45,17 @@ app.whenReady().then(() => {
   state.store.init();
   i18n.init(state.store.getSetting('locale') || 'en');
   createTray();
+
+  // Ctrl+Alt+P → 모든 포스트잇 최상위로 활성화
+  globalShortcut.register('Ctrl+Alt+P', () => {
+    for (const win of state.windows.values()) {
+      if (win.isDestroyed()) continue;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.setAlwaysOnTop(true);
+      win.setAlwaysOnTop(false);
+    }
+  });
 
   const postits = state.store.getAll();
   const visible = postits.filter(p => !p.hidden);
