@@ -50,7 +50,7 @@ function openFormatter(postitWC, formatting) {
   fwin.webContents.once('did-finish-load', () => {
     fwin.webContents.send('set-translations', i18n.getAllTranslations());
     fwin.webContents.send('init-formatter', formatting ?? {
-      fontSize: 8, bold: false, underline: false, color: '#333333',
+      fontSize: 10, bold: false, underline: false, color: '#333333',
     });
   });
 
