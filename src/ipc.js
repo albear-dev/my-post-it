@@ -60,6 +60,23 @@ function registerIpcHandlers() {
   /** 접기/펴기 토글. */
   ipcMain.on('toggle-collapse', (_event, { id }) => toggleCollapse(id));
 
+  /** 에디터 내용이 넘칠 때 창 높이를 자동으로 늘린다. */
+  ipcMain.on('auto-resize', (_event, { id, deltaHeight }) => {
+    const win = state.windows.get(id);
+    if (!win || win.isDestroyed()) return;
+    const postit = state.store.get(id);
+    if (!postit || postit.collapsed) return;
+
+    const [width, height] = win.getSize();
+    const { screen } = require('electron');
+    const display = screen.getDisplayMatching(win.getBounds());
+    const maxHeight = display.workAreaSize.height;
+    const newHeight = Math.min(height + deltaHeight, maxHeight);
+
+    win.setSize(width, newHeight);
+    state.store.update(id, { height: newHeight });
+  });
+
   /**
    * 우클릭 컨텍스트 메뉴를 구성하여 표시한다.
    *

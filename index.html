@@ -295,11 +295,22 @@
       }, 400);
     }
 
+    // ── 자동 높이 확장 ────────────────────────────────────
+    function autoResize() {
+      if (document.body.classList.contains('collapsed')) return;
+      const contentArea = document.getElementById('content-area');
+      if (contentArea.scrollHeight > contentArea.clientHeight) {
+        const delta = contentArea.scrollHeight - contentArea.clientHeight;
+        ipcRenderer.send('auto-resize', { id: postitId, deltaHeight: delta });
+      }
+    }
+
     editor.addEventListener('input', () => {
       // 엔터 후 삭제 시 <br>만 남는 경우 완전히 비워서 placeholder가 표시되도록
       if (editor.innerHTML === '<br>') editor.innerHTML = '';
       updateTitleInfo();
       schedSave();
+      autoResize();
     });
 
     // ── 체크박스: "[]" 뒤에 스페이스 → 자동 변환 ──────────
