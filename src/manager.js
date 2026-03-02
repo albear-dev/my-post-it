@@ -59,6 +59,7 @@ function sendManagerData() {
     alarmDays:   p.alarmDays || [],
     color:       p.color || '#ffff99',
     contentType: p.contentType || 'html',
+    locked:      p.locked || false,
   }));
   state.managerWindow.webContents.send('manager-init', allPostits);
 }

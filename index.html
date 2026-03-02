@@ -88,6 +88,7 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
 
     /* contenteditable 에디터 */
@@ -266,6 +267,30 @@
     #editor-wiki::-webkit-scrollbar-thumb:hover {
       background: rgba(0, 0, 0, 0.32);
     }
+
+    /* ── 잠금 오버레이 ───────────────────────────────────── */
+    #lock-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      cursor: pointer;
+    }
+    #lock-icon { font-size: 32px; opacity: 0.6; user-select: none; }
+
+    body.locked #editor,
+    body.locked #editor-wiki {
+      filter: blur(5px);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ── 읽기전용 ────────────────────────────────────────── */
+    body.read-only #editor {
+      -webkit-user-modify: read-only;
+    }
   </style>
 </head>
 <body>
@@ -281,6 +306,9 @@
     <button id="btn-delete" class="handle-btn" data-i18n-title="postit.delete" title="Delete">✕</button>
   </div>
   <div id="content-area">
+    <div id="lock-overlay" style="display:none;">
+      <div id="lock-icon">&#x1F512;</div>
+    </div>
     <div id="editor" contenteditable="true" spellcheck="false"></div>
     <textarea id="editor-wiki" spellcheck="false"></textarea>
   </div>
@@ -322,6 +350,8 @@
     // 포스트잇 속성 (날짜/시간/우선순위/편집모드)
     let postitProps = { date: '', time: '', priority: 3 };
     let contentType = 'html'; // 'html' | 'wiki'
+    let isLocked = false;
+    let isReadOnly = false;
 
     /** 편집 모드에 따라 에디터를 전환한다. */
     function switchEditorMode(newMode) {
@@ -452,6 +482,8 @@
         document.body.classList.add('collapsed');
         btnFold.textContent = '▴';
       }
+      if (data.locked) applyLockState(true);
+      if (data.readOnly) applyReadOnlyState(true);
     });
 
     // ── 속성 변경 수신 (properties 창 → main → 여기) ────
@@ -499,8 +531,41 @@
       updateTitleInfo();
     });
 
+    // ── 잠금/읽기전용 상태 적용 ────────────────────────────
+    function applyLockState(locked) {
+      isLocked = locked;
+      document.body.classList.toggle('locked', locked);
+      document.getElementById('lock-overlay').style.display = locked ? 'flex' : 'none';
+      if (locked) {
+        editor.removeAttribute('contenteditable');
+        editorWiki.setAttribute('readonly', 'true');
+      } else {
+        editor.setAttribute('contenteditable', 'true');
+        if (!isReadOnly) editorWiki.removeAttribute('readonly');
+      }
+    }
+
+    function applyReadOnlyState(readOnly) {
+      isReadOnly = readOnly;
+      document.body.classList.toggle('read-only', readOnly);
+      if (readOnly) {
+        editorWiki.setAttribute('readonly', 'true');
+      } else if (!isLocked) {
+        editorWiki.removeAttribute('readonly');
+      }
+    }
+
+    ipcRenderer.on('lock-changed', (_e, { locked }) => applyLockState(locked));
+    ipcRenderer.on('readonly-changed', (_e, { readOnly }) => applyReadOnlyState(readOnly));
+
+    // 잠금 오버레이 더블클릭 → 잠금 해제 요청
+    document.getElementById('lock-overlay').addEventListener('dblclick', () => {
+      ipcRenderer.send('request-unlock', { id: postitId });
+    });
+
     // ── 내용 저장 (디바운스 400ms) ────────────────────────
     function schedSave() {
+      if (isLocked) return;
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
         if (contentType === 'wiki') {
@@ -1004,9 +1069,9 @@
     // ── 오른쪽 클릭 → 컨텍스트 메뉴 ─────────────────────
     window.addEventListener('contextmenu', e => {
       e.preventDefault();
-      const inEditor = editor.contains(e.target);
+      const inEditor = editor.contains(e.target) || editorWiki.contains(e.target);
       const sel          = window.getSelection();
-      const hasSelection = inEditor && !!(sel && !sel.isCollapsed && sel.toString().trim().length > 0);
+      const hasSelection = !isLocked && inEditor && !!(sel && !sel.isCollapsed && sel.toString().trim().length > 0);
 
       let formatting = null;
       if (hasSelection) {
@@ -1014,7 +1079,10 @@
         formatting = getSelectionFormatting();
       }
 
-      ipcRenderer.send('show-context-menu', { id: postitId, hasSelection, formatting, inEditor, contentType });
+      ipcRenderer.send('show-context-menu', {
+        id: postitId, hasSelection, formatting, inEditor, contentType,
+        locked: isLocked, readOnly: isReadOnly,
+      });
     });
 
     // ── 서식 적용 (formatter → main → 여기) ──────────────

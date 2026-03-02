@@ -257,6 +257,9 @@ function createNewPostit() {
     alarmDays: [],
     color:       '#ffff99',
     contentType: 'html',
+    locked:       false,
+    lockPassword: '',
+    readOnly:     false,
   };
 
   state.store.create(postit);

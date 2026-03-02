@@ -33,6 +33,9 @@ module.exports = {
   /** @type {number|null} 알림 스케줄러가 마지막으로 체크한 시각 (ms timestamp) */
   lastAlarmCheck: null,
 
+  /** @type {Map<number, {postitId: string, action: string}>} password dialog webContentsId → target info */
+  passwordDialogTargets: new Map(),
+
   /** @type {Set<string>} 수동 드래그 중인 포스트잇 ID 집합 */
   draggingPostits: new Set(),
 

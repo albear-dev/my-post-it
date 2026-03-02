@@ -123,5 +123,20 @@
   "properties.modeWiki": "Wiki (Markdown)",
 
   "mode.wiki": "WIKI",
-  "mode.editor": "Editor"
+  "mode.editor": "Editor",
+
+  "menu.lock": "Lock",
+  "menu.unlock": "Unlock",
+  "menu.readOnly": "Read-only",
+
+  "dialog.passwordTitle": "Password",
+  "dialog.passwordSet": "Set a lock password:",
+  "dialog.passwordEnter": "Enter password:",
+  "dialog.passwordConfirm": "Confirm password:",
+  "dialog.passwordMismatch": "Passwords do not match.",
+  "dialog.passwordWrong": "Incorrect password.",
+  "dialog.passwordOk": "OK",
+  "dialog.passwordCancel": "Cancel",
+
+  "manager.lockedContent": "🔒 Locked"
 }

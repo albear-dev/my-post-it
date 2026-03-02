@@ -282,6 +282,7 @@
       if (!searchKeyword) return allPostits;
       const kw = searchKeyword.toLowerCase();
       return allPostits.filter(p => {
+        if (p.locked) return false;
         const text = p.contentType === 'wiki' ? p.content : stripHtml(p.content);
         return text.toLowerCase().includes(kw);
       });
@@ -372,7 +373,13 @@
         // 타이틀
         const tdTitle = document.createElement('td');
         tdTitle.className = 'col-title';
-        tdTitle.textContent = extractTitle(p.content, p.contentType);
+        if (p.locked) {
+          tdTitle.textContent = t('manager.lockedContent');
+          tdTitle.style.color = '#999';
+          tdTitle.style.fontStyle = 'italic';
+        } else {
+          tdTitle.textContent = extractTitle(p.content, p.contentType);
+        }
         tdTitle.style.overflow = 'hidden';
         tdTitle.style.textOverflow = 'ellipsis';
         tdTitle.style.whiteSpace = 'nowrap';

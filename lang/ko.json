@@ -123,5 +123,20 @@
   "properties.modeWiki": "Wiki (마크다운)",
 
   "mode.wiki": "WIKI",
-  "mode.editor": "에디터"
+  "mode.editor": "에디터",
+
+  "menu.lock": "잠그기",
+  "menu.unlock": "잠금 해제",
+  "menu.readOnly": "읽기전용",
+
+  "dialog.passwordTitle": "비밀번호",
+  "dialog.passwordSet": "잠금 비밀번호를 설정하세요:",
+  "dialog.passwordEnter": "비밀번호를 입력하세요:",
+  "dialog.passwordConfirm": "비밀번호 확인:",
+  "dialog.passwordMismatch": "비밀번호가 일치하지 않습니다.",
+  "dialog.passwordWrong": "비밀번호가 틀렸습니다.",
+  "dialog.passwordOk": "확인",
+  "dialog.passwordCancel": "취소",
+
+  "manager.lockedContent": "🔒 잠금됨"
 }

@@ -25,7 +25,7 @@ const i18n = require('./i18n');
  */
 function registerIpcHandlers() {
   const { createNewPostit, confirmAndDelete, toggleCollapse } = require('./postitWindow');
-  const { openFormatter, openProperties } = require('./dialogs');
+  const { openFormatter, openProperties, openPasswordDialog } = require('./dialogs');
   const { openManager, notifyManager } = require('./manager');
   const { hidePostit } = require('./postitWindow');
 
@@ -87,25 +87,57 @@ function registerIpcHandlers() {
    *
    * @param {{ id: string, hasSelection: boolean, formatting: Object, inEditor: boolean }} params
    */
-  ipcMain.on('show-context-menu', (event, { id, hasSelection, formatting, inEditor, contentType }) => {
+  ipcMain.on('show-context-menu', (event, { id, hasSelection, formatting, inEditor, contentType, locked, readOnly }) => {
     const items = [
       { label: i18n.t('menu.newPostit'), click: () => createNewPostit() },
     ];
 
-    if (inEditor) {
+    // 잠금 안 된 경우에만 편집 메뉴 표시
+    if (!locked && inEditor) {
       items.push({ type: 'separator' });
-      items.push({ label: i18n.t('menu.cut'),   role: 'cut'   });
-      items.push({ label: i18n.t('menu.copy'),  role: 'copy'  });
-      items.push({ label: i18n.t('menu.paste'), role: 'paste' });
+      if (!readOnly) {
+        items.push({ label: i18n.t('menu.cut'), role: 'cut' });
+      }
+      items.push({ label: i18n.t('menu.copy'), role: 'copy' });
+      if (!readOnly) {
+        items.push({ label: i18n.t('menu.paste'), role: 'paste' });
+      }
 
-      // Wiki 모드에서는 포매터(속성 변경) 숨김
-      if (hasSelection && contentType !== 'wiki') {
+      // Wiki 모드에서는 포매터(속성 변경) 숨김, 읽기전용에서도 숨김
+      if (!readOnly && hasSelection && contentType !== 'wiki') {
         items.push({ type: 'separator' });
         items.push({
           label: i18n.t('menu.formatting'),
           click: () => openFormatter(event.sender, formatting),
         });
       }
+    }
+
+    // 잠금 / 읽기전용 섹션
+    items.push({ type: 'separator' });
+    if (locked) {
+      items.push({
+        label: i18n.t('menu.unlock'),
+        click: () => openPasswordDialog(id, 'verify', 'unlock'),
+      });
+    } else {
+      items.push({
+        label: i18n.t('menu.lock'),
+        click: () => openPasswordDialog(id, 'set', 'lock'),
+      });
+      items.push({
+        label: i18n.t('menu.readOnly'),
+        type: 'checkbox',
+        checked: !!readOnly,
+        click: () => {
+          const newVal = !readOnly;
+          state.store.update(id, { readOnly: newVal });
+          const win = state.windows.get(id);
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('readonly-changed', { readOnly: newVal });
+          }
+        },
+      });
     }
 
     items.push({ type: 'separator' });
@@ -116,6 +148,14 @@ function registerIpcHandlers() {
     items.push({ label: i18n.t('menu.deleteThis'), click: () => confirmAndDelete(id) });
 
     Menu.buildFromTemplate(items).popup({ window: BrowserWindow.fromWebContents(event.sender) });
+  });
+
+  /** 잠금 해제 요청 (렌더러에서 더블클릭 시) */
+  ipcMain.on('request-unlock', (_event, { id }) => {
+    const postit = state.store.get(id);
+    if (postit && postit.locked) {
+      openPasswordDialog(id, 'verify', 'unlock');
+    }
   });
 }
 

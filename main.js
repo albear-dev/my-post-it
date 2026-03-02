@@ -66,7 +66,7 @@ app.whenReady().then(() => {
     for (const [id, win] of state.windows.entries()) {
       if (win === focused) {
         const postit = state.store.get(id);
-        if (!postit) return;
+        if (!postit || postit.locked) return;
         const newMode = (postit.contentType || 'html') === 'html' ? 'wiki' : 'html';
         state.store.update(id, { contentType: newMode });
         win.webContents.send('toggle-content-type', newMode);

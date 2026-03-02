@@ -161,6 +161,72 @@ function registerDialogIpc() {
   ipcMain.on('properties-cancel', (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
+
+  /** 비밀번호 다이얼로그: 확인 → 잠금/해제 처리 */
+  ipcMain.on('password-submit', (event, { password }) => {
+    const target = state.passwordDialogTargets.get(event.sender.id);
+    if (!target) return;
+    const { postitId, action } = target;
+
+    if (action === 'lock') {
+      state.store.update(postitId, { locked: true, lockPassword: password });
+      const win = state.windows.get(postitId);
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('lock-changed', { locked: true });
+      }
+    } else if (action === 'unlock') {
+      state.store.update(postitId, { locked: false, lockPassword: '' });
+      const win = state.windows.get(postitId);
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('lock-changed', { locked: false });
+      }
+    }
+
+    notifyManager();
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  /** 비밀번호 다이얼로그: 취소 */
+  ipcMain.on('password-cancel', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
 }
 
-module.exports = { openFormatter, openProperties, registerDialogIpc };
+// ─── 비밀번호 다이얼로그 ─────────────────────────────────────────────────────
+
+/**
+ * 비밀번호 입력 다이얼로그를 연다.
+ *
+ * @param {string} postitId - 대상 포스트잇 ID
+ * @param {'set'|'verify'} mode - 'set': 비밀번호 설정, 'verify': 비밀번호 확인
+ * @param {'lock'|'unlock'} action - 결과 처리 방식
+ */
+function openPasswordDialog(postitId, mode, action) {
+  const postit = state.store.get(postitId);
+  if (!postit) return;
+
+  const pwin = new BrowserWindow({
+    width: 300,
+    height: mode === 'set' ? 220 : 170,
+    resizable: false, minimizable: false, maximizable: false,
+    title: i18n.t('dialog.passwordTitle'),
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+
+  pwin.setMenuBarVisibility(false);
+  pwin.loadFile(path.join(__dirname, '..', 'password.html'));
+
+  pwin.webContents.once('did-finish-load', () => {
+    pwin.webContents.send('set-translations', i18n.getAllTranslations());
+    pwin.webContents.send('init-password', {
+      mode,
+      storedPassword: postit.lockPassword || '',
+    });
+  });
+
+  const pwcId = pwin.webContents.id;
+  state.passwordDialogTargets.set(pwcId, { postitId, action });
+  pwin.on('closed', () => state.passwordDialogTargets.delete(pwcId));
+}
+
+module.exports = { openFormatter, openProperties, openPasswordDialog, registerDialogIpc };
