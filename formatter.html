@@ -81,6 +81,17 @@
     }
     .color-swatch:hover { border-color: #888; }
 
+    .btn-none {
+      padding: 2px 8px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 11px;
+      color: #999;
+    }
+    .btn-none:hover { border-color: #888; color: #333; }
+
     .preview-wrap {
       margin: 12px 0;
       padding: 8px 10px;
@@ -185,6 +196,21 @@
     </div>
   </div>
 
+  <!-- Background Color -->
+  <div class="row">
+    <span class="lbl" data-i18n="formatter.bgColor">배경색</span>
+    <input type="color" id="bgColor" value="#fff9c4">
+    <button type="button" id="bgColorNone" class="btn-none" data-i18n="formatter.none">없음</button>
+    <div class="color-presets">
+      <span class="color-swatch" data-bgcolor="#fff9c4" style="background:#fff9c4;"></span>
+      <span class="color-swatch" data-bgcolor="#fce4ec" style="background:#fce4ec;"></span>
+      <span class="color-swatch" data-bgcolor="#e3f2fd" style="background:#e3f2fd;"></span>
+      <span class="color-swatch" data-bgcolor="#e8f5e9" style="background:#e8f5e9;"></span>
+      <span class="color-swatch" data-bgcolor="#f3e5f5" style="background:#f3e5f5;"></span>
+      <span class="color-swatch" data-bgcolor="#fff3e0" style="background:#fff3e0;"></span>
+    </div>
+  </div>
+
   <!-- Preview -->
   <div class="preview-wrap">
     <span id="preview" data-i18n="formatter.preview">Preview Text</span>
@@ -221,7 +247,11 @@
     const elUnderline     = document.getElementById('underline');
     const elStrikethrough = document.getElementById('strikethrough');
     const elColor         = document.getElementById('color');
+    const elBgColor       = document.getElementById('bgColor');
+    const elBgColorNone   = document.getElementById('bgColorNone');
     const preview         = document.getElementById('preview');
+
+    let bgColorValue = '';  // '' = 배경 없음, '#xxx' = 배경색
 
     const DEFAULTS = {
       fontFamily:     'Malgun Gothic',
@@ -231,6 +261,7 @@
       underline:      false,
       strikethrough:  false,
       color:          '#333333',
+      bgColor:        '',
     };
 
     function applyToForm(data) {
@@ -241,15 +272,20 @@
       elUnderline.checked       = data.underline      ?? DEFAULTS.underline;
       elStrikethrough.checked   = data.strikethrough  ?? DEFAULTS.strikethrough;
       elColor.value             = data.color          ?? DEFAULTS.color;
+      bgColorValue              = data.bgColor        ?? DEFAULTS.bgColor;
+      if (bgColorValue) elBgColor.value = bgColorValue;
+      elBgColor.style.opacity   = bgColorValue ? '1' : '0.4';
       updatePreview();
     }
 
     function updatePreview() {
-      preview.style.fontFamily = `'${elFont.value}', sans-serif`;
-      preview.style.fontSize   = `${elFontSize.value}pt`;
-      preview.style.fontWeight = elBold.checked ? 'bold' : 'normal';
-      preview.style.fontStyle  = elItalic.checked ? 'italic' : 'normal';
-      preview.style.color      = elColor.value;
+      preview.style.fontFamily      = `'${elFont.value}', sans-serif`;
+      preview.style.fontSize        = `${elFontSize.value}pt`;
+      preview.style.fontWeight      = elBold.checked ? 'bold' : 'normal';
+      preview.style.fontStyle       = elItalic.checked ? 'italic' : 'normal';
+      preview.style.color           = elColor.value;
+      preview.style.backgroundColor = bgColorValue || 'transparent';
+      elBgColor.style.opacity       = bgColorValue ? '1' : '0.4';
       const deco = [];
       if (elUnderline.checked)     deco.push('underline');
       if (elStrikethrough.checked) deco.push('line-through');
@@ -265,10 +301,31 @@
       el.addEventListener('change', updatePreview);
     });
 
-    // 색상 프리셋 클릭
-    document.querySelectorAll('.color-swatch').forEach(el => {
+    // 글자색 프리셋 클릭
+    document.querySelectorAll('.color-swatch[data-color]').forEach(el => {
       el.addEventListener('click', () => {
         elColor.value = el.dataset.color;
+        updatePreview();
+      });
+    });
+
+    // 배경색 관련 이벤트
+    elBgColor.addEventListener('input', () => {
+      bgColorValue = elBgColor.value;
+      updatePreview();
+    });
+    elBgColor.addEventListener('change', () => {
+      bgColorValue = elBgColor.value;
+      updatePreview();
+    });
+    elBgColorNone.addEventListener('click', () => {
+      bgColorValue = '';
+      updatePreview();
+    });
+    document.querySelectorAll('.color-swatch[data-bgcolor]').forEach(el => {
+      el.addEventListener('click', () => {
+        bgColorValue = el.dataset.bgcolor;
+        elBgColor.value = bgColorValue;
         updatePreview();
       });
     });
@@ -286,6 +343,7 @@
         underline:     elUnderline.checked,
         strikethrough: elStrikethrough.checked,
         color:         elColor.value,
+        bgColor:       bgColorValue,
       });
     });
 

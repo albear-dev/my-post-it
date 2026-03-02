@@ -4,7 +4,7 @@
  * marked v12 + highlight.js 기반으로 GFM Markdown을 HTML로 변환한다.
  * 지원 문법: 제목, 굵게, 기울임, 취소선, 중첩 목록, 체크박스,
  *           인용, 인라인 코드, 코드 블록(구문 강조), 수평선, 링크,
- *           이미지, 표
+ *           이미지, 표, 나무위키 색상({{{#color text}}})
  */
 
 const { marked } = require('marked');
@@ -110,6 +110,21 @@ function parseWiki(text) {
     return `\x00ESC${ch.charCodeAt(0)}\x00`;
   });
 
+  // ── 나무위키 색상 문법: {{{#color text}}} → <span> ──
+  // {{{#color content}}} — 글자색만
+  // {{{#color1#color2 content}}} — 글자색 + 배경색
+  let prevSrc;
+  do {
+    prevSrc = src;
+    src = src.replace(/\{\{\{#([a-zA-Z0-9]+)(?:#([a-zA-Z0-9]+))?\s+((?:(?!\{\{\{).)*?)\}\}\}/g,
+      (_m, c1, c2, content) => {
+        const textColor = namuColorToCSS(c1);
+        let style = `color:${textColor}`;
+        if (c2) style += `;background-color:${namuColorToCSS(c2)}`;
+        return `<span style="${style}">${content}</span>`;
+      });
+  } while (src !== prevSrc);
+
   // ── 코드 블록 복원 ──
   src = src.replace(/\x01CODE(\d+)\x01/g, (_m, idx) => codeSlots[+idx]);
 
@@ -157,6 +172,8 @@ function wikiToPlainText(text) {
     clean = clean.replace(/~~([^~]+)~~/g, '$1');
     clean = clean.replace(/`([^`]+)`/g, '$1');
     clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // 나무위키 색상 문법 제거
+    clean = clean.replace(/\{\{\{#[a-zA-Z0-9]+(?:#[a-zA-Z0-9]+)?\s+([\s\S]*?)\}\}\}/g, '$1');
     if (clean) return clean;
   }
   return '';
@@ -312,7 +329,26 @@ function htmlToWiki(html) {
 }
 
 /**
- * <span style="...">text</span>을 Markdown 서식으로 변환한다.
+ * 나무위키 색상값 → CSS 색상 ("ff85b1" → "#ff85b1", "red" → "red")
+ */
+function namuColorToCSS(val) {
+  if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(val)) return '#' + val;
+  return val;
+}
+
+/**
+ * CSS 색상 → 나무위키 색상 표기 (rgb(204,0,0) → "#cc0000", "#cc0000" → "#cc0000", "red" → "#red")
+ */
+function cssColorToNamu(css) {
+  const trimmed = css.trim();
+  if (trimmed.startsWith('#')) return trimmed;
+  const m = trimmed.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) return '#' + [m[1], m[2], m[3]].map(n => (+n).toString(16).padStart(2, '0')).join('');
+  return '#' + trimmed;
+}
+
+/**
+ * <span style="...">text</span>을 Markdown 서식 + 나무위키 색상으로 변환한다.
  * 중첩 span을 안쪽부터 처리 (루프).
  */
 function convertStyledSpans(html) {
@@ -328,10 +364,34 @@ function convertStyledSpans(html) {
       const isStrikethrough = /text-decoration[^;]*line-through/i.test(style);
       const isUnderline     = /text-decoration[^;]*underline/i.test(style);
 
+      // 색상 추출 (color vs background-color 구분)
+      const colorMatch = style.match(/(?:^|;\s*)color\s*:\s*([^;]+)/i);
+      const bgMatch    = style.match(/background(?:-color)?\s*:\s*([^;]+)/i);
+      const textColor  = colorMatch ? colorMatch[1].trim() : null;
+      const bgColor    = bgMatch ? bgMatch[1].trim() : null;
+
+      // 기본색(#333333) 및 투명 배경 감지
+      const isDefaultColor = !textColor
+        || textColor === '#333333' || textColor === '#333'
+        || textColor === 'rgb(51, 51, 51)' || textColor === 'rgb(51,51,51)';
+      const isNoBg = !bgColor
+        || bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)'
+        || bgColor === 'initial' || bgColor === 'inherit' || bgColor === 'none';
+
+      // Markdown 서식 마커
       if (isUnderline)     result = `<u>${result}</u>`;
       if (isStrikethrough) result = `~~${result}~~`;
       if (isItalic)        result = `*${result}*`;
       if (isBold)          result = `**${result}**`;
+
+      // 나무위키 색상 문법
+      if (!isDefaultColor || !isNoBg) {
+        const tc = isDefaultColor ? null : cssColorToNamu(textColor);
+        const bc = isNoBg ? null : cssColorToNamu(bgColor);
+        if (tc && bc)       result = `{{{${tc}${bc} ${result}}}}`;
+        else if (tc)        result = `{{{${tc} ${result}}}}`;
+        else if (bc)        result = `{{{#333333${bc} ${result}}}}`;
+      }
 
       return result;
     });

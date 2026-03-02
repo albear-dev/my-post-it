@@ -33,7 +33,7 @@ function openFormatter(postitWC, formatting) {
 
   const fwin = new BrowserWindow({
     width:       430,
-    height:      290,
+    height:      340,
     resizable:   false,
     minimizable: false,
     maximizable: false,
@@ -50,7 +50,7 @@ function openFormatter(postitWC, formatting) {
   fwin.webContents.once('did-finish-load', () => {
     fwin.webContents.send('set-translations', i18n.getAllTranslations());
     fwin.webContents.send('init-formatter', formatting ?? {
-      fontSize: 10, bold: false, italic: false, underline: false, strikethrough: false, color: '#333333',
+      fontSize: 10, bold: false, italic: false, underline: false, strikethrough: false, color: '#333333', bgColor: '',
     });
   });
 

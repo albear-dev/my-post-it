@@ -83,6 +83,8 @@
   "formatter.italic": "기울이기",
   "formatter.strikethrough": "취소선",
   "formatter.fontColor": "글자색",
+  "formatter.bgColor": "배경색",
+  "formatter.none": "없음",
   "formatter.preview": "미리보기 텍스트 (Preview Text)",
   "formatter.reset": "속성 초기화",
   "formatter.cancel": "취소",

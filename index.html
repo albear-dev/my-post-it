@@ -1075,7 +1075,7 @@
 
     // ── 선택 영역의 현재 서식 감지 ────────────────────────
     function rgbToHex(rgb) {
-      const m = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+      const m = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
       if (!m) return '#333333';
       return '#' + m.slice(1).map(n => (+n).toString(16).padStart(2, '0')).join('');
     }
@@ -1084,7 +1084,7 @@
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) return {
         fontFamily: 'Malgun Gothic', fontSize: 10, bold: false, italic: false,
-        underline: false, strikethrough: false, color: '#333333',
+        underline: false, strikethrough: false, color: '#333333', bgColor: '',
       };
 
       let el = sel.getRangeAt(0).commonAncestorContainer;
@@ -1095,6 +1095,13 @@
       // font-family: 첫 번째 후보만 추출하고 따옴표 제거
       const fontFamily = s.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
 
+      // background-color: transparent/rgba(0,0,0,0)이면 빈 문자열
+      let bgColor = '';
+      const bg = s.backgroundColor;
+      if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') {
+        bgColor = rgbToHex(bg);
+      }
+
       return {
         fontFamily,
         fontSize:      Math.round(parseFloat(s.fontSize) * 0.75), // px → pt (1pt = 1.333px)
@@ -1103,6 +1110,7 @@
         underline:     s.textDecoration.includes('underline'),
         strikethrough: s.textDecoration.includes('line-through'),
         color:         rgbToHex(s.color),
+        bgColor,
       };
     }
 
@@ -1126,7 +1134,7 @@
     });
 
     // ── 서식 적용 (formatter → main → 여기) ──────────────
-    ipcRenderer.on('apply-formatting', (_e, { fontFamily, fontSize, bold, italic, underline, strikethrough, color }) => {
+    ipcRenderer.on('apply-formatting', (_e, { fontFamily, fontSize, bold, italic, underline, strikethrough, color, bgColor }) => {
       restoreSelection(); // 저장해 뒀던 선택 범위 복원
 
       const sel = window.getSelection();
@@ -1142,6 +1150,7 @@
           node.style.removeProperty('font-weight');
           node.style.removeProperty('font-style');
           node.style.removeProperty('color');
+          node.style.removeProperty('background-color');
           node.style.removeProperty('font-family');
           node.style.removeProperty('font-size');
         }
@@ -1156,6 +1165,7 @@
       span.style.color      = color;
       span.style.fontWeight = bold   ? 'bold'   : 'normal';
       span.style.fontStyle  = italic ? 'italic' : 'normal';
+      if (bgColor) span.style.backgroundColor = bgColor;
       const deco = [];
       if (underline)     deco.push('underline');
       if (strikethrough) deco.push('line-through');

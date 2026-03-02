@@ -83,6 +83,8 @@
   "formatter.italic": "Italic",
   "formatter.strikethrough": "Strikethrough",
   "formatter.fontColor": "Font Color",
+  "formatter.bgColor": "Highlight",
+  "formatter.none": "None",
   "formatter.preview": "Preview Text",
   "formatter.reset": "Reset Formatting",
   "formatter.cancel": "Cancel",
