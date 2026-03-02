@@ -129,6 +129,69 @@
     }
 
     /* ── Wiki → HTML 렌더링 스타일 ──────────────────────── */
+
+    /* 코드 블록 래퍼 */
+    #editor .code-block {
+      position: relative;
+      background: #f5f5dc;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin: 4px 0;
+      overflow: hidden;
+    }
+    #editor .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 8px;
+      background: rgba(0,0,0,0.05);
+      border-bottom: 1px solid #ddd;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 8pt;
+      color: #888;
+      user-select: none;
+    }
+    #editor .code-lang {
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    #editor .code-copy {
+      cursor: pointer;
+      font-size: 10pt;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    }
+    #editor .code-copy:hover { opacity: 1; }
+
+    #editor .code-block pre {
+      background: none;
+      border: none;
+      border-radius: 0;
+      padding: 6px 10px 6px 0;
+      margin: 0;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 9pt;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* 라인 넘버 */
+    #editor .code-block .ln {
+      display: inline-block;
+      width: 2.5em;
+      text-align: right;
+      padding-right: 8px;
+      margin-right: 8px;
+      border-right: 1px solid #ddd;
+      color: #aaa;
+      user-select: none;
+      font-size: 8pt;
+      vertical-align: baseline;
+    }
+
+    /* 기존 pre (코드블록 래퍼 없는 경우 호환) */
     #editor pre {
       background: #f5f5dc;
       border: 1px solid #ddd;
@@ -733,6 +796,25 @@
           }
         }
         schedSave();
+      }
+    });
+
+    // ── 코드 블록 복사 버튼 ─────────────────────────────────
+    editor.addEventListener('click', e => {
+      if (e.target.classList.contains('code-copy')) {
+        const block = e.target.closest('.code-block');
+        if (!block) return;
+        const codeEl = block.querySelector('code');
+        if (!codeEl) return;
+        // 라인넘버 span 제거한 순수 텍스트 추출
+        const clone = codeEl.cloneNode(true);
+        clone.querySelectorAll('.ln').forEach(ln => ln.remove());
+        const text = clone.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = e.target;
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = '📋'; }, 1500);
+        });
       }
     });
 

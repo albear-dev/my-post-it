@@ -78,7 +78,17 @@ marked.use({
         highlighted = code;
       }
       const langClass = lang ? ` class="hljs language-${lang}"` : '';
-      return `<pre${langAttr}><code${langClass}>${highlighted}</code></pre>\n`;
+      // 라인 넘버 추가
+      const lines = highlighted.split('\n');
+      // 마지막 빈 줄 제거 (코드 끝 개행)
+      if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+      const numbered = lines.map((ln, i) =>
+        `<span class="ln">${i + 1}</span>${ln}`
+      ).join('\n');
+      // 헤더 (언어 라벨 + 복사 버튼)
+      const langLabel = lang ? lang : 'code';
+      const header = `<div class="code-header"><span class="code-lang">${langLabel}</span><span class="code-copy" title="Copy">📋</span></div>`;
+      return `<div class="code-block" contenteditable="false">${header}<pre${langAttr}><code${langClass}>${numbered}</code></pre></div>\n`;
     }
   }
 });
@@ -198,6 +208,9 @@ function htmlToWiki(html) {
   });
 
   // 1. 코드 블록 추출 (내부 줄바꿈 + hljs span 보존)
+  // 1-0. code-block 래퍼 및 헤더 제거, 라인넘버 스트립
+  text = text.replace(/<div class="code-block"[^>]*>[\s\S]*?(<pre[\s\S]*?<\/pre>)\s*<\/div>/gi, '$1');
+  text = text.replace(/<span class="ln">\d+<\/span>/g, '');
   const preserved = [];
   text = text.replace(/<pre([^>]*)><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (_m, attrs, code) => {
     const langMatch = attrs.match(/data-lang=["']([^"']+)["']/);
