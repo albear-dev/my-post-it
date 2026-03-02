@@ -80,6 +80,8 @@
   "formatter.style": "Style",
   "formatter.bold": "Bold",
   "formatter.underline": "Underline",
+  "formatter.italic": "Italic",
+  "formatter.strikethrough": "Strikethrough",
   "formatter.fontColor": "Font Color",
   "formatter.preview": "Preview Text",
   "formatter.reset": "Reset Formatting",
@@ -120,9 +122,9 @@
 
   "properties.editMode": "Edit Mode",
   "properties.modeHtml": "HTML (WYSIWYG)",
-  "properties.modeWiki": "Wiki (Markdown)",
+  "properties.modeWiki": "Markdown",
 
-  "mode.wiki": "WIKI",
+  "mode.wiki": "Markdown",
   "mode.editor": "Editor",
 
   "menu.lock": "Lock",
@@ -138,5 +140,7 @@
   "dialog.passwordOk": "OK",
   "dialog.passwordCancel": "Cancel",
 
-  "manager.lockedContent": "🔒 Locked"
+  "manager.lockedContent": "🔒 Locked",
+
+  "badge.readOnly": "Read"
 }

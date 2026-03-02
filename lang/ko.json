@@ -80,6 +80,8 @@
   "formatter.style": "스타일",
   "formatter.bold": "굵게",
   "formatter.underline": "밑줄",
+  "formatter.italic": "기울이기",
+  "formatter.strikethrough": "취소선",
   "formatter.fontColor": "글자색",
   "formatter.preview": "미리보기 텍스트 (Preview Text)",
   "formatter.reset": "속성 초기화",
@@ -120,9 +122,9 @@
 
   "properties.editMode": "편집 모드",
   "properties.modeHtml": "HTML (위지윅)",
-  "properties.modeWiki": "Wiki (마크다운)",
+  "properties.modeWiki": "Markdown",
 
-  "mode.wiki": "WIKI",
+  "mode.wiki": "마크다운",
   "mode.editor": "에디터",
 
   "menu.lock": "잠그기",
@@ -138,5 +140,7 @@
   "dialog.passwordOk": "확인",
   "dialog.passwordCancel": "취소",
 
-  "manager.lockedContent": "🔒 잠금됨"
+  "manager.lockedContent": "🔒 잠금됨",
+
+  "badge.readOnly": "읽기"
 }

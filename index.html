@@ -52,9 +52,10 @@
       white-space: nowrap;
     }
 
-    #badge-mode { color: #555; font-size: 8pt; background: rgba(255,255,255,0.5); border-radius: 3px; padding: 0 3px; }
+    #badge-mode { color: #555; font-size: 10pt; background: rgba(255,255,255,0.5); border-radius: 3px; padding: 0 3px; }
     #badge-dday { color: #995500; }
     #badge-time { color: #556600; }
+    #badge-readonly { color: #c00; }
 
     #title-text {
       flex: 1;
@@ -299,6 +300,7 @@
     <div id="title-info">
       <span id="badge-mode"     class="badge"></span>
       <span id="badge-priority" class="badge"></span>
+      <span id="badge-readonly" class="badge" style="display:none;"></span>
       <span id="badge-dday"     class="badge"></span>
       <span id="badge-time"     class="badge"></span>
       <span id="title-text"></span>
@@ -340,6 +342,7 @@
     const btnFold        = document.getElementById('btn-fold');
     const badgeMode      = document.getElementById('badge-mode');
     const badgePriority  = document.getElementById('badge-priority');
+    const badgeReadonly  = document.getElementById('badge-readonly');
     const badgeDday      = document.getElementById('badge-dday');
     const badgeTime      = document.getElementById('badge-time');
     const titleText      = document.getElementById('title-text');
@@ -429,12 +432,16 @@
 
     // ── 타이틀 바 갱신 ──────────────────────────────────
     function updateTitleInfo() {
-      // 모드 표시
+      // 모드 표시 (E / M)
       badgeMode.textContent = contentType === 'wiki' ? t('mode.wiki') : t('mode.editor');
 
       const p = postitProps.priority ?? 3;
-      badgePriority.textContent = `[${p}]`;
+      badgePriority.textContent = `[${t(`priority.${p}.short`)}]`;
       badgePriority.style.color = PRIORITY_COLORS[p] || '#1e88e5';
+
+      // 읽기전용 표시
+      badgeReadonly.textContent = `[${t('badge.readOnly')}]`;
+      badgeReadonly.style.display = isReadOnly ? '' : 'none';
 
       const dday = calcDday(postitProps.date);
       badgeDday.textContent = dday;
@@ -514,7 +521,7 @@
       updateTitleInfo();
     });
 
-    // ── Ctrl+Alt+W: 편집 모드 전환 (main → 여기) ─────────
+    // ── Ctrl+Alt+M: 편집 모드 전환 (main → 여기) ─────────
     ipcRenderer.on('toggle-content-type', (_e, newMode) => {
       if (newMode === contentType) return;
       if (newMode === 'wiki') {
@@ -553,6 +560,7 @@
       } else if (!isLocked) {
         editorWiki.removeAttribute('readonly');
       }
+      updateTitleInfo();
     }
 
     ipcRenderer.on('lock-changed', (_e, { locked }) => applyLockState(locked));
@@ -1046,7 +1054,8 @@
     function getSelectionFormatting() {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) return {
-        fontFamily: 'Malgun Gothic', fontSize: 10, bold: false, underline: false, color: '#333333',
+        fontFamily: 'Malgun Gothic', fontSize: 10, bold: false, italic: false,
+        underline: false, strikethrough: false, color: '#333333',
       };
 
       let el = sel.getRangeAt(0).commonAncestorContainer;
@@ -1059,10 +1068,12 @@
 
       return {
         fontFamily,
-        fontSize:  Math.round(parseFloat(s.fontSize) * 0.75), // px → pt (1pt = 1.333px)
-        bold:      parseInt(s.fontWeight) >= 700,
-        underline: s.textDecoration.includes('underline'),
-        color:     rgbToHex(s.color),
+        fontSize:      Math.round(parseFloat(s.fontSize) * 0.75), // px → pt (1pt = 1.333px)
+        bold:          parseInt(s.fontWeight) >= 700,
+        italic:        s.fontStyle === 'italic',
+        underline:     s.textDecoration.includes('underline'),
+        strikethrough: s.textDecoration.includes('line-through'),
+        color:         rgbToHex(s.color),
       };
     }
 
@@ -1086,7 +1097,7 @@
     });
 
     // ── 서식 적용 (formatter → main → 여기) ──────────────
-    ipcRenderer.on('apply-formatting', (_e, { fontFamily, fontSize, bold, underline, color }) => {
+    ipcRenderer.on('apply-formatting', (_e, { fontFamily, fontSize, bold, italic, underline, strikethrough, color }) => {
       restoreSelection(); // 저장해 뒀던 선택 범위 복원
 
       const sel = window.getSelection();
@@ -1096,12 +1107,11 @@
       const fragment = range.extractContents(); // 선택된 DOM을 추출
 
       // 중첩된 span에 인라인으로 설정된 서식 제거
-      // CSS 특성상 자식 요소에 명시적으로 설정된 text-decoration 등은
-      // 부모 span의 값으로 덮어쓸 수 없으므로, 먼저 내부를 초기화한다.
       (function clearStyles(node) {
         if (node.nodeType === Node.ELEMENT_NODE && node.style) {
           node.style.removeProperty('text-decoration');
           node.style.removeProperty('font-weight');
+          node.style.removeProperty('font-style');
           node.style.removeProperty('color');
           node.style.removeProperty('font-family');
           node.style.removeProperty('font-size');
@@ -1112,11 +1122,15 @@
       // 새 스타일로 감싼 span 생성
       const ff = fontFamily || 'Malgun Gothic';
       const span = document.createElement('span');
-      span.style.fontFamily     = `'${ff}', sans-serif`;
-      span.style.fontSize       = `${fontSize}pt`;
-      span.style.color          = color;
-      span.style.fontWeight     = bold      ? 'bold'      : 'normal';
-      span.style.textDecoration = underline ? 'underline' : 'none';
+      span.style.fontFamily = `'${ff}', sans-serif`;
+      span.style.fontSize   = `${fontSize}pt`;
+      span.style.color      = color;
+      span.style.fontWeight = bold   ? 'bold'   : 'normal';
+      span.style.fontStyle  = italic ? 'italic' : 'normal';
+      const deco = [];
+      if (underline)     deco.push('underline');
+      if (strikethrough) deco.push('line-through');
+      span.style.textDecoration = deco.length > 0 ? deco.join(' ') : 'none';
       span.appendChild(fragment);
       range.insertNode(span);
 

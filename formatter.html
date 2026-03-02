@@ -65,6 +65,22 @@
       background: none;
     }
 
+    .color-presets {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 6px;
+    }
+    .color-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .color-swatch:hover { border-color: #888; }
+
     .preview-wrap {
       margin: 12px 0;
       padding: 8px 10px;
@@ -148,7 +164,9 @@
     <span class="lbl" data-i18n="formatter.style">Style</span>
     <div class="checkboxes">
       <label class="chk-label"><input type="checkbox" id="bold"> <span data-i18n="formatter.bold">Bold</span></label>
+      <label class="chk-label"><input type="checkbox" id="italic"> <span data-i18n="formatter.italic">Italic</span></label>
       <label class="chk-label"><input type="checkbox" id="underline"> <span data-i18n="formatter.underline">Underline</span></label>
+      <label class="chk-label"><input type="checkbox" id="strikethrough"> <span data-i18n="formatter.strikethrough">Strikethrough</span></label>
     </div>
   </div>
 
@@ -156,6 +174,15 @@
   <div class="row">
     <span class="lbl" data-i18n="formatter.fontColor">Font Color</span>
     <input type="color" id="color" value="#333333">
+    <div class="color-presets">
+      <span class="color-swatch" data-color="#333333" style="background:#333333;"></span>
+      <span class="color-swatch" data-color="#cc0000" style="background:#cc0000;"></span>
+      <span class="color-swatch" data-color="#0066cc" style="background:#0066cc;"></span>
+      <span class="color-swatch" data-color="#008800" style="background:#008800;"></span>
+      <span class="color-swatch" data-color="#ff6600" style="background:#ff6600;"></span>
+      <span class="color-swatch" data-color="#9933cc" style="background:#9933cc;"></span>
+      <span class="color-swatch" data-color="#888888" style="background:#888888;"></span>
+    </div>
   </div>
 
   <!-- Preview -->
@@ -187,45 +214,63 @@
     }
     ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
 
-    const elFont      = document.getElementById('fontFamily');
-    const elFontSize  = document.getElementById('fontSize');
-    const elBold      = document.getElementById('bold');
-    const elUnderline = document.getElementById('underline');
-    const elColor     = document.getElementById('color');
-    const preview     = document.getElementById('preview');
+    const elFont          = document.getElementById('fontFamily');
+    const elFontSize      = document.getElementById('fontSize');
+    const elBold          = document.getElementById('bold');
+    const elItalic        = document.getElementById('italic');
+    const elUnderline     = document.getElementById('underline');
+    const elStrikethrough = document.getElementById('strikethrough');
+    const elColor         = document.getElementById('color');
+    const preview         = document.getElementById('preview');
 
     const DEFAULTS = {
-      fontFamily: 'Malgun Gothic',
-      fontSize:   10,
-      bold:       false,
-      underline:  false,
-      color:      '#333333',
+      fontFamily:     'Malgun Gothic',
+      fontSize:       10,
+      bold:           false,
+      italic:         false,
+      underline:      false,
+      strikethrough:  false,
+      color:          '#333333',
     };
 
     function applyToForm(data) {
-      elFont.value        = data.fontFamily ?? DEFAULTS.fontFamily;
-      elFontSize.value    = data.fontSize   ?? DEFAULTS.fontSize;
-      elBold.checked      = data.bold       ?? DEFAULTS.bold;
-      elUnderline.checked = data.underline  ?? DEFAULTS.underline;
-      elColor.value       = data.color      ?? DEFAULTS.color;
+      elFont.value              = data.fontFamily     ?? DEFAULTS.fontFamily;
+      elFontSize.value          = data.fontSize       ?? DEFAULTS.fontSize;
+      elBold.checked            = data.bold           ?? DEFAULTS.bold;
+      elItalic.checked          = data.italic         ?? DEFAULTS.italic;
+      elUnderline.checked       = data.underline      ?? DEFAULTS.underline;
+      elStrikethrough.checked   = data.strikethrough  ?? DEFAULTS.strikethrough;
+      elColor.value             = data.color          ?? DEFAULTS.color;
       updatePreview();
     }
 
     function updatePreview() {
-      preview.style.fontFamily     = `'${elFont.value}', sans-serif`;
-      preview.style.fontSize       = `${elFontSize.value}pt`;
-      preview.style.fontWeight     = elBold.checked ? 'bold' : 'normal';
-      preview.style.textDecoration = elUnderline.checked ? 'underline' : 'none';
-      preview.style.color          = elColor.value;
+      preview.style.fontFamily = `'${elFont.value}', sans-serif`;
+      preview.style.fontSize   = `${elFontSize.value}pt`;
+      preview.style.fontWeight = elBold.checked ? 'bold' : 'normal';
+      preview.style.fontStyle  = elItalic.checked ? 'italic' : 'normal';
+      preview.style.color      = elColor.value;
+      const deco = [];
+      if (elUnderline.checked)     deco.push('underline');
+      if (elStrikethrough.checked) deco.push('line-through');
+      preview.style.textDecoration = deco.length > 0 ? deco.join(' ') : 'none';
     }
 
     // 초기 값 수신
     ipcRenderer.on('init-formatter', (_e, data) => applyToForm(data));
 
     // 실시간 미리보기
-    [elFont, elFontSize, elBold, elUnderline, elColor].forEach(el => {
+    [elFont, elFontSize, elBold, elItalic, elUnderline, elStrikethrough, elColor].forEach(el => {
       el.addEventListener('input',  updatePreview);
       el.addEventListener('change', updatePreview);
+    });
+
+    // 색상 프리셋 클릭
+    document.querySelectorAll('.color-swatch').forEach(el => {
+      el.addEventListener('click', () => {
+        elColor.value = el.dataset.color;
+        updatePreview();
+      });
     });
 
     // 속성 초기화
@@ -234,11 +279,13 @@
     // 저장
     document.getElementById('btnSave').addEventListener('click', () => {
       ipcRenderer.send('formatter-apply', {
-        fontFamily: elFont.value,
-        fontSize:   parseInt(elFontSize.value, 10) || DEFAULTS.fontSize,
-        bold:       elBold.checked,
-        underline:  elUnderline.checked,
-        color:      elColor.value,
+        fontFamily:    elFont.value,
+        fontSize:      parseInt(elFontSize.value, 10) || DEFAULTS.fontSize,
+        bold:          elBold.checked,
+        italic:        elItalic.checked,
+        underline:     elUnderline.checked,
+        strikethrough: elStrikethrough.checked,
+        color:         elColor.value,
       });
     });
 

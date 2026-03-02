@@ -32,8 +32,8 @@ function openFormatter(postitWC, formatting) {
   }
 
   const fwin = new BrowserWindow({
-    width:       380,
-    height:      330,
+    width:       430,
+    height:      290,
     resizable:   false,
     minimizable: false,
     maximizable: false,
@@ -50,7 +50,7 @@ function openFormatter(postitWC, formatting) {
   fwin.webContents.once('did-finish-load', () => {
     fwin.webContents.send('set-translations', i18n.getAllTranslations());
     fwin.webContents.send('init-formatter', formatting ?? {
-      fontSize: 10, bold: false, underline: false, color: '#333333',
+      fontSize: 10, bold: false, italic: false, underline: false, strikethrough: false, color: '#333333',
     });
   });
 
@@ -207,7 +207,7 @@ function openPasswordDialog(postitId, mode, action) {
 
   const pwin = new BrowserWindow({
     width: 300,
-    height: mode === 'set' ? 220 : 170,
+    height: mode === 'set' ? 240 : 180,
     resizable: false, minimizable: false, maximizable: false,
     title: i18n.t('dialog.passwordTitle'),
     webPreferences: { nodeIntegration: true, contextIsolation: false },

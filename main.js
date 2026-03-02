@@ -57,8 +57,8 @@ app.whenReady().then(() => {
     }
   });
 
-  // Ctrl+Alt+W → 활성 포스트잇의 편집 모드 전환 (HTML ↔ Wiki)
-  globalShortcut.register('Ctrl+Alt+W', () => {
+  // Ctrl+Alt+M → 활성 포스트잇의 편집 모드 전환 (HTML ↔ Markdown)
+  globalShortcut.register('Ctrl+Alt+M', () => {
     const { BrowserWindow } = require('electron');
     const focused = BrowserWindow.getFocusedWindow();
     if (!focused || focused.isDestroyed()) return;
