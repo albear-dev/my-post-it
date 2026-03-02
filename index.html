@@ -52,6 +52,7 @@
       white-space: nowrap;
     }
 
+    #badge-mode { color: #555; font-size: 8pt; background: rgba(255,255,255,0.5); border-radius: 3px; padding: 0 3px; }
     #badge-dday { color: #995500; }
     #badge-time { color: #556600; }
 
@@ -167,7 +168,6 @@
     #editor th, #editor td {
       border: 1px solid #ccc;
       padding: 4px 8px;
-      text-align: left;
     }
     #editor th {
       background: #f0f0d0;
@@ -180,6 +180,11 @@
       height: auto;
       margin: 4px 0;
       border-radius: 4px;
+      cursor: pointer;
+    }
+    #editor img.resizing {
+      outline: 2px solid #4a8df8;
+      cursor: nwse-resize;
     }
 
     /* marked <p> 태그 여백 초기화 */
@@ -246,6 +251,7 @@
   <div id="drag-handle">
     <button id="btn-fold"   class="handle-btn" data-i18n-title="postit.foldToggle" title="Fold / Unfold">▾</button>
     <div id="title-info">
+      <span id="badge-mode"     class="badge"></span>
       <span id="badge-priority" class="badge"></span>
       <span id="badge-dday"     class="badge"></span>
       <span id="badge-time"     class="badge"></span>
@@ -283,6 +289,7 @@
     const editorWiki     = document.getElementById('editor-wiki');
     const btnDelete      = document.getElementById('btn-delete');
     const btnFold        = document.getElementById('btn-fold');
+    const badgeMode      = document.getElementById('badge-mode');
     const badgePriority  = document.getElementById('badge-priority');
     const badgeDday      = document.getElementById('badge-dday');
     const badgeTime      = document.getElementById('badge-time');
@@ -371,6 +378,9 @@
 
     // ── 타이틀 바 갱신 ──────────────────────────────────
     function updateTitleInfo() {
+      // 모드 표시
+      badgeMode.textContent = contentType === 'wiki' ? t('mode.wiki') : t('mode.editor');
+
       const p = postitProps.priority ?? 3;
       badgePriority.textContent = `[${p}]`;
       badgePriority.style.color = PRIORITY_COLORS[p] || '#1e88e5';
@@ -485,8 +495,11 @@
       if (document.body.classList.contains('collapsed')) return;
       const contentArea = document.getElementById('content-area');
 
+      // 이미 스크롤이 있는 상태면 자동 확장하지 않음
+      const hasScroll = contentArea.scrollHeight > contentArea.clientHeight + 2;
+      if (hasScroll) return;
+
       if (contentType === 'wiki') {
-        // textarea는 내부적으로 스크롤을 처리하므로 별도로 높이 조정
         editorWiki.style.height = 'auto';
         const scrollH = editorWiki.scrollHeight;
         const clientH = editorWiki.clientHeight;
@@ -777,6 +790,41 @@
 
       // 즉시 저장
       ipcRenderer.send('save-content', { id: postitId, content: editor.innerHTML, contentType: 'html' });
+    });
+
+    // ── 이미지 드래그 리사이즈 ─────────────────────────────
+    let resizingImg = null;
+    let resizeStartX = 0, resizeStartY = 0;
+    let resizeStartW = 0, resizeStartH = 0;
+
+    editor.addEventListener('mousedown', e => {
+      if (e.target.tagName === 'IMG') {
+        e.preventDefault();
+        resizingImg = e.target;
+        resizingImg.classList.add('resizing');
+        resizeStartX = e.clientX;
+        resizeStartY = e.clientY;
+        resizeStartW = resizingImg.offsetWidth;
+        resizeStartH = resizingImg.offsetHeight;
+      }
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!resizingImg) return;
+      const dx = e.clientX - resizeStartX;
+      const dy = e.clientY - resizeStartY;
+      const newW = Math.max(20, resizeStartW + dx);
+      const newH = Math.max(20, resizeStartH + dy);
+      resizingImg.style.width = newW + 'px';
+      resizingImg.style.height = newH + 'px';
+      resizingImg.style.maxWidth = 'none';
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!resizingImg) return;
+      resizingImg.classList.remove('resizing');
+      resizingImg = null;
+      schedSave();
     });
 
     // ── 삭제 버튼 ─────────────────────────────────────────

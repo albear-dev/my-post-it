@@ -50,11 +50,21 @@ marked.use({
       return `<a href="${href}" target="_blank"${titleAttr}>${text}</a>`;
     },
 
-    // ── 이미지 ──
+    // ── 이미지 (크기 지정 지원: ![alt|WxH](url)) ──
     // v12: image(href, title, text)
     image(href, title, text) {
       const titleAttr = title ? ` title="${title}"` : '';
-      return `<img src="${href}" alt="${text}"${titleAttr} style="max-width:100%;height:auto;">`;
+      // alt에서 크기 파싱: "name|200" 또는 "name|200x300"
+      let alt = text;
+      let style = 'max-width:100%;height:auto;';
+      const sizeMatch = text.match(/^(.*?)\|(\d+)(?:x(\d+))?$/);
+      if (sizeMatch) {
+        alt = sizeMatch[1];
+        const w = sizeMatch[2];
+        const h = sizeMatch[3];
+        style = h ? `width:${w}px;height:${h}px;` : `width:${w}px;height:${w}px;`;
+      }
+      return `<img src="${href}" alt="${alt}"${titleAttr} style="${style}">`;
     },
 
     // ── 코드 블록 (highlight.js 직접 호출) ──
@@ -111,8 +121,8 @@ function wikiToPlainText(text) {
     clean = clean.replace(/^-\s+\[[ xX]\]\s*/, '');
     clean = clean.replace(/^[-*+]\s+/, '');
     clean = clean.replace(/^\d+\.\s+/, '');
-    // 이미지: ![alt](url) → alt
-    clean = clean.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+    // 이미지: ![alt|size](url) → alt
+    clean = clean.replace(/!\[([^\]]*?)(?:\|\d+(?:x\d+)?)?\]\([^)]+\)/g, '$1');
     clean = clean.replace(/\*\*([^*]+)\*\*/g, '$1');
     clean = clean.replace(/\*([^*]+)\*/g, '$1');
     clean = clean.replace(/~~([^~]+)~~/g, '$1');
@@ -147,23 +157,36 @@ function htmlToWiki(html) {
     return `\x00P${preserved.length - 1}\x00`;
   });
 
-  // 2. 표 추출 (내부 줄바꿈 보존)
+  // 2. 표 추출 (내부 줄바꿈 + 정렬 보존)
   text = text.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_m, tableContent) => {
     const rows = [];
+    const aligns = []; // 첫 행(thead)에서 정렬 추출
     const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rowMatch;
+    let isFirstRow = true;
     while ((rowMatch = rowRegex.exec(tableContent)) !== null) {
       const cells = [];
-      const cellRegex = /<(th|td)[^>]*>([\s\S]*?)<\/\1>/gi;
+      const cellRegex = /<(th|td)([^>]*)>([\s\S]*?)<\/\1>/gi;
       let cellMatch;
       while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
-        cells.push(inlineHtmlToWiki(cellMatch[2]));
+        cells.push(inlineHtmlToWiki(cellMatch[3]));
+        if (isFirstRow) {
+          const alignMatch = cellMatch[2].match(/align=["'](\w+)["']/i);
+          aligns.push(alignMatch ? alignMatch[1] : '');
+        }
       }
       rows.push(cells);
+      isFirstRow = false;
     }
     if (rows.length === 0) return '';
     let tbl = '\n| ' + rows[0].join(' | ') + ' |\n';
-    tbl += '| ' + rows[0].map(() => '---').join(' | ') + ' |\n';
+    // 정렬 구분선
+    tbl += '| ' + rows[0].map((_c, i) => {
+      const a = (aligns[i] || '').toLowerCase();
+      if (a === 'center') return ':---:';
+      if (a === 'right') return '---:';
+      return '---';
+    }).join(' | ') + ' |\n';
     for (let i = 1; i < rows.length; i++) {
       tbl += '| ' + rows[i].join(' | ') + ' |\n';
     }
@@ -171,12 +194,34 @@ function htmlToWiki(html) {
     return `\x00P${preserved.length - 1}\x00`;
   });
 
-  // 3. 이미지 변환
-  text = text.replace(/<img[^>]*?src=["']([^"']+)["'][^>]*?alt=["']([^"']*)["'][^>]*?>/gi,
-    (_m, src, alt) => `![${alt}](${src})`);
-  text = text.replace(/<img[^>]*?alt=["']([^"']*)["'][^>]*?src=["']([^"']+)["'][^>]*?>/gi,
-    (_m, alt, src) => `![${alt}](${src})`);
-  text = text.replace(/<img[^>]*?src=["']([^"']+)["'][^>]*?>/gi, '![]($1)');
+  // 3. 이미지 변환 (크기 정보 보존)
+  text = text.replace(/<img[^>]*?>/gi, (imgTag) => {
+    const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
+    const altMatch = imgTag.match(/alt=["']([^"']*)["']/i);
+    if (!srcMatch) return imgTag;
+    const src = srcMatch[1];
+    let alt = altMatch ? altMatch[1] : '';
+    // width/height를 style 또는 속성에서 추출
+    let w = null, h = null;
+    const styleMatch = imgTag.match(/style=["']([^"']*)["']/i);
+    if (styleMatch) {
+      const wm = styleMatch[1].match(/width:\s*(\d+)px/);
+      const hm = styleMatch[1].match(/height:\s*(\d+)px/);
+      if (wm) w = wm[1];
+      if (hm) h = hm[1];
+    }
+    const widthAttr = imgTag.match(/\bwidth=["'](\d+)["']/i);
+    const heightAttr = imgTag.match(/\bheight=["'](\d+)["']/i);
+    if (!w && widthAttr) w = widthAttr[1];
+    if (!h && heightAttr) h = heightAttr[1];
+    // 크기가 있으면 alt에 추가
+    if (w && h && w !== h) {
+      alt = `${alt}|${w}x${h}`;
+    } else if (w) {
+      alt = `${alt}|${w}`;
+    }
+    return `![${alt}](${src})`;
+  });
 
   // 4. HTML 소스 줄바꿈 제거 (먼저 제거해야 목록/블록 변환 시 정확한 줄바꿈 생성)
   text = text.replace(/\r?\n/g, '');
@@ -282,7 +327,11 @@ function convertListsToWiki(html) {
       depth--;
       if (depth === 0) result += '\n';
     } else if (tagName === 'li' && !isClosing && depth > 0) {
-      const indent = '  '.repeat(Math.max(0, depth - 1));
+      // ol은 "1. " (3칸)이므로 3-space, ul은 "- " (2칸)이므로 2-space
+      let indent = '';
+      for (let d = 0; d < depth - 1; d++) {
+        indent += listTypeStack[d] === 'ol' ? '   ' : '  ';
+      }
       const type = listTypeStack[listTypeStack.length - 1];
       if (type === 'ol') {
         olCounters[depth] = (olCounters[depth] || 0) + 1;

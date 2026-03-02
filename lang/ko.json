@@ -120,5 +120,8 @@
 
   "properties.editMode": "편집 모드",
   "properties.modeHtml": "HTML (위지윅)",
-  "properties.modeWiki": "Wiki (마크다운)"
+  "properties.modeWiki": "Wiki (마크다운)",
+
+  "mode.wiki": "WIKI",
+  "mode.editor": "에디터"
 }

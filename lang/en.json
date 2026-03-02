@@ -120,5 +120,8 @@
 
   "properties.editMode": "Edit Mode",
   "properties.modeHtml": "HTML (WYSIWYG)",
-  "properties.modeWiki": "Wiki (Markdown)"
+  "properties.modeWiki": "Wiki (Markdown)",
+
+  "mode.wiki": "WIKI",
+  "mode.editor": "Editor"
 }
