@@ -17,7 +17,11 @@
   "author": "Myself",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0",
-    "@electron/packager": "^18.0.0"
+    "@electron/packager": "^18.0.0",
+    "electron": "^28.0.0"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "marked": "^12.0.2"
   }
 }

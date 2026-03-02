@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>My Postit</title>
+  <link rel="stylesheet" href="./node_modules/highlight.js/styles/atom-one-light.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -149,6 +150,44 @@
     #editor pre code {
       background: none;
       padding: 0;
+    }
+
+    #editor pre code.hljs {
+      background: none;
+      padding: 0;
+    }
+
+    /* 표 */
+    #editor table {
+      border-collapse: collapse;
+      margin: 4px 0;
+      width: 100%;
+      font-size: 9pt;
+    }
+    #editor th, #editor td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: left;
+    }
+    #editor th {
+      background: #f0f0d0;
+      font-weight: bold;
+    }
+
+    /* 이미지 */
+    #editor img {
+      max-width: 100%;
+      height: auto;
+      margin: 4px 0;
+      border-radius: 4px;
+    }
+
+    /* marked <p> 태그 여백 초기화 */
+    #editor p { margin: 0; }
+
+    /* 중첩 목록 */
+    #editor ul ul, #editor ol ul, #editor ul ol, #editor ol ol {
+      margin: 2px 0;
     }
 
     #editor blockquote {

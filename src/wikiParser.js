@@ -1,161 +1,95 @@
 /**
- * @file Markdown(GitLab Flavored) → HTML 변환기
+ * @file Markdown(GitLab Flavored) ↔ HTML 변환기
  *
- * 외부 라이브러리 없이 GitLab Flavored Markdown 문법을 HTML로 변환한다.
- * 지원 문법: 제목, 굵게, 기울임, 취소선, 목록, 체크박스,
- *           인용, 인라인 코드, 코드 블록, 수평선, 링크
+ * marked v12 + highlight.js 기반으로 GFM Markdown을 HTML로 변환한다.
+ * 지원 문법: 제목, 굵게, 기울임, 취소선, 중첩 목록, 체크박스,
+ *           인용, 인라인 코드, 코드 블록(구문 강조), 수평선, 링크,
+ *           이미지, 표
  */
+
+const { marked } = require('marked');
+const hljs = require('highlight.js');
+
+// ── marked 설정 (모듈 로드 시 1회) ─────────────────────────
+// marked v12 API: renderer 메서드는 위치 파라미터(positional params) 사용
+
+marked.use({
+  breaks: true,   // 줄바꿈 → <br> (포스트잇에 필수)
+  gfm: true,      // 표, 취소선, 체크박스, 자동링크
+  renderer: {
+    // ── 체크박스 목록 아이템 ──
+    // v12: listitem(text, task, checked)
+    listitem(text, task, checked) {
+      if (task) {
+        const checkedAttr = checked ? ' checked' : '';
+        const textClass = checked ? ' class="checked-text"' : '';
+        // marked가 생성한 기본 checkbox 제거
+        text = text.replace(/<input[^>]*>\s*/, '');
+        return `<li><input type="checkbox" class="postit-checkbox"${checkedAttr}><span${textClass}>${text}</span></li>\n`;
+      }
+      return `<li>${text}</li>\n`;
+    },
+
+    // ── 목록 컨테이너 ──
+    // v12: list(body, ordered, start)
+    list(body, ordered, start) {
+      if (ordered) {
+        const startAttr = (start != null && start !== 1) ? ` start="${start}"` : '';
+        return `<ol${startAttr}>${body}</ol>\n`;
+      }
+      // 체크박스 목록이면 리스트 마커 숨김
+      const isTask = body.includes('class="postit-checkbox"');
+      if (isTask) return `<ul style="list-style:none;padding-left:4px;">${body}</ul>\n`;
+      return `<ul>${body}</ul>\n`;
+    },
+
+    // ── 링크 (새 탭) ──
+    // v12: link(href, title, text)
+    link(href, title, text) {
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<a href="${href}" target="_blank"${titleAttr}>${text}</a>`;
+    },
+
+    // ── 이미지 ──
+    // v12: image(href, title, text)
+    image(href, title, text) {
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<img src="${href}" alt="${text}"${titleAttr} style="max-width:100%;height:auto;">`;
+    },
+
+    // ── 코드 블록 (highlight.js 직접 호출) ──
+    // v12: code(code, language, isEscaped)
+    code(code, lang) {
+      const langAttr = lang ? ` data-lang="${lang}"` : '';
+      let highlighted;
+      if (lang && hljs.getLanguage(lang)) {
+        highlighted = hljs.highlight(code, { language: lang }).value;
+      } else {
+        highlighted = code;
+      }
+      const langClass = lang ? ` class="hljs language-${lang}"` : '';
+      return `<pre${langAttr}><code${langClass}>${highlighted}</code></pre>\n`;
+    }
+  }
+});
+
+// ── parseWiki ───────────────────────────────────────────────
 
 /**
  * Markdown 텍스트를 HTML로 변환한다.
- *
  * @param {string} text - Markdown 텍스트
  * @returns {string} HTML 문자열
  */
 function parseWiki(text) {
   if (!text) return '';
-
-  const lines = text.split('\n');
-  const result = [];
-  let inList = false;    // ul
-  let inOList = false;   // ol
-  let inCode = false;    // 코드 블록
-  let codeLang = '';
-  let codeLines = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-
-    // 코드 블록: ```
-    if (line.trim().startsWith('```')) {
-      if (!inCode) {
-        if (inList)  { result.push('</ul>'); inList = false; }
-        if (inOList) { result.push('</ol>'); inOList = false; }
-        inCode = true;
-        codeLang = line.trim().slice(3).trim();
-        codeLines = [];
-      } else {
-        const langAttr = codeLang ? ` data-lang="${codeLang}"` : '';
-        result.push(`<pre${langAttr}><code>${codeLines.join('\n').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`);
-        inCode = false;
-        codeLang = '';
-        codeLines = [];
-      }
-      continue;
-    }
-
-    if (inCode) {
-      codeLines.push(line);
-      continue;
-    }
-
-    // 빈 줄 → 목록 종료 + 빈 줄
-    if (!line.trim()) {
-      if (inList)  { result.push('</ul>'); inList = false; }
-      if (inOList) { result.push('</ol>'); inOList = false; }
-      result.push('<br>');
-      continue;
-    }
-
-    // 수평선: --- 또는 *** 또는 ___
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-      if (inList)  { result.push('</ul>'); inList = false; }
-      if (inOList) { result.push('</ol>'); inOList = false; }
-      result.push('<hr>');
-      continue;
-    }
-
-    // 제목: # ~ ###
-    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
-    if (headingMatch) {
-      if (inList)  { result.push('</ul>'); inList = false; }
-      if (inOList) { result.push('</ol>'); inOList = false; }
-      const level = headingMatch[1].length;
-      result.push(`<h${level}>${applyInline(headingMatch[2])}</h${level}>`);
-      continue;
-    }
-
-    // 인용: > text
-    const quoteMatch = line.match(/^>\s*(.*)$/);
-    if (quoteMatch) {
-      if (inList)  { result.push('</ul>'); inList = false; }
-      if (inOList) { result.push('</ol>'); inOList = false; }
-      result.push(`<blockquote>${applyInline(quoteMatch[1])}</blockquote>`);
-      continue;
-    }
-
-    // 체크박스: - [ ] 또는 - [x]
-    const checkMatch = line.match(/^-\s+\[([ xX])\]\s*(.*)$/);
-    if (checkMatch) {
-      if (inOList) { result.push('</ol>'); inOList = false; }
-      if (!inList) { result.push('<ul style="list-style:none;padding-left:4px;">'); inList = true; }
-      const checked = checkMatch[1].toLowerCase() === 'x';
-      const textClass = checked ? ' class="checked-text"' : '';
-      result.push(`<li><input type="checkbox" class="postit-checkbox"${checked ? ' checked' : ''}><span${textClass}>${applyInline(checkMatch[2])}</span></li>`);
-      continue;
-    }
-
-    // 비순서 목록: - item 또는 * item
-    const ulMatch = line.match(/^[-*]\s+(.+)$/);
-    if (ulMatch) {
-      if (inOList) { result.push('</ol>'); inOList = false; }
-      if (!inList) { result.push('<ul>'); inList = true; }
-      result.push(`<li>${applyInline(ulMatch[1])}</li>`);
-      continue;
-    }
-
-    // 순서 목록: 1. item
-    const olMatch = line.match(/^\d+\.\s+(.+)$/);
-    if (olMatch) {
-      if (inList)  { result.push('</ul>'); inList = false; }
-      if (!inOList) { result.push('<ol>'); inOList = true; }
-      result.push(`<li>${applyInline(olMatch[1])}</li>`);
-      continue;
-    }
-
-    // 일반 텍스트
-    if (inList)  { result.push('</ul>'); inList = false; }
-    if (inOList) { result.push('</ol>'); inOList = false; }
-    result.push(`<div>${applyInline(line)}</div>`);
-  }
-
-  // 닫히지 않은 코드 블록 처리
-  if (inCode) {
-    result.push(`<pre><code>${codeLines.join('\n').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`);
-  }
-  if (inList)  result.push('</ul>');
-  if (inOList) result.push('</ol>');
-
-  return result.join('');
+  return marked.parse(text).trim();
 }
 
-/**
- * 인라인 Markdown 문법을 HTML로 변환한다.
- * GitLab 스타일: 굵게, 기울임, 취소선, 인라인 코드, 링크
- *
- * @param {string} text - 한 줄의 텍스트
- * @returns {string} 인라인 HTML
- */
-function applyInline(text) {
-  // 인라인 코드: `code`
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // 링크: [text](url)
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-  // 자동 URL 변환 (bare URL, 이미 href 안에 있는 것 제외)
-  text = text.replace(/(^|[\s(])((https?:\/\/)[^\s<>)\]]+)/g, '$1<a href="$2" target="_blank">$2</a>');
-  // 굵게: **text**
-  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // 기울임: *text*
-  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  // 취소선: ~~text~~
-  text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-  return text;
-}
+// ── wikiToPlainText ─────────────────────────────────────────
 
 /**
  * Markdown 텍스트에서 플레인 텍스트를 추출한다.
  * 타이틀 바 표시용.
- *
  * @param {string} text - Markdown 텍스트
  * @returns {string} 플레인 텍스트 (첫 줄)
  */
@@ -166,11 +100,19 @@ function wikiToPlainText(text) {
     let clean = line.trim();
     if (!clean) continue;
     if (clean.startsWith('```')) continue;
-    clean = clean.replace(/^#{1,3}\s+/, '');
+    // 표 구분선 건너뛰기
+    if (/^\|[\s\-:|]+\|$/.test(clean)) continue;
+    // 표 행 → 첫 셀 텍스트 추출
+    if (clean.startsWith('|') && clean.endsWith('|')) {
+      clean = clean.replace(/^\|/, '').replace(/\|$/, '').split('|')[0].trim();
+    }
+    clean = clean.replace(/^#{1,6}\s+/, '');
     clean = clean.replace(/^>\s*/, '');
     clean = clean.replace(/^-\s+\[[ xX]\]\s*/, '');
-    clean = clean.replace(/^[-*]\s+/, '');
+    clean = clean.replace(/^[-*+]\s+/, '');
     clean = clean.replace(/^\d+\.\s+/, '');
+    // 이미지: ![alt](url) → alt
+    clean = clean.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
     clean = clean.replace(/\*\*([^*]+)\*\*/g, '$1');
     clean = clean.replace(/\*([^*]+)\*/g, '$1');
     clean = clean.replace(/~~([^~]+)~~/g, '$1');
@@ -181,10 +123,11 @@ function wikiToPlainText(text) {
   return '';
 }
 
+// ── htmlToWiki ──────────────────────────────────────────────
+
 /**
  * HTML을 Markdown 텍스트로 변환한다.
  * 모드 전환(HTML→Wiki) 시 사용. 완벽하지 않은 변환이므로 손실 가능.
- *
  * @param {string} html - HTML 문자열
  * @returns {string} Markdown 텍스트
  */
@@ -193,78 +136,178 @@ function htmlToWiki(html) {
 
   let text = html;
 
-  // 코드 블록을 먼저 추출 (내부 줄바꿈 보존 필요)
-  const codeBlocks = [];
-  text = text.replace(/<pre([^>]*)><code>([\s\S]*?)<\/code><\/pre>/gi, (_m, attrs, code) => {
+  // 1. 코드 블록 추출 (내부 줄바꿈 + hljs span 보존)
+  const preserved = [];
+  text = text.replace(/<pre([^>]*)><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (_m, attrs, code) => {
     const langMatch = attrs.match(/data-lang=["']([^"']+)["']/);
     const lang = langMatch ? langMatch[1] : '';
-    const decoded = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-    codeBlocks.push('\n```' + lang + '\n' + decoded + '\n```\n');
-    return `\x00CODEBLOCK${codeBlocks.length - 1}\x00`;
+    let decoded = code.replace(/<[^>]+>/g, '');
+    decoded = decoded.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    preserved.push('\n```' + lang + '\n' + decoded + '\n```\n');
+    return `\x00P${preserved.length - 1}\x00`;
   });
 
-  // HTML 소스의 줄바꿈은 의미 없으므로 제거 (이중 줄바꿈 방지)
+  // 2. 표 추출 (내부 줄바꿈 보존)
+  text = text.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_m, tableContent) => {
+    const rows = [];
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let rowMatch;
+    while ((rowMatch = rowRegex.exec(tableContent)) !== null) {
+      const cells = [];
+      const cellRegex = /<(th|td)[^>]*>([\s\S]*?)<\/\1>/gi;
+      let cellMatch;
+      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+        cells.push(inlineHtmlToWiki(cellMatch[2]));
+      }
+      rows.push(cells);
+    }
+    if (rows.length === 0) return '';
+    let tbl = '\n| ' + rows[0].join(' | ') + ' |\n';
+    tbl += '| ' + rows[0].map(() => '---').join(' | ') + ' |\n';
+    for (let i = 1; i < rows.length; i++) {
+      tbl += '| ' + rows[i].join(' | ') + ' |\n';
+    }
+    preserved.push(tbl);
+    return `\x00P${preserved.length - 1}\x00`;
+  });
+
+  // 3. 이미지 변환
+  text = text.replace(/<img[^>]*?src=["']([^"']+)["'][^>]*?alt=["']([^"']*)["'][^>]*?>/gi,
+    (_m, src, alt) => `![${alt}](${src})`);
+  text = text.replace(/<img[^>]*?alt=["']([^"']*)["'][^>]*?src=["']([^"']+)["'][^>]*?>/gi,
+    (_m, alt, src) => `![${alt}](${src})`);
+  text = text.replace(/<img[^>]*?src=["']([^"']+)["'][^>]*?>/gi, '![]($1)');
+
+  // 4. HTML 소스 줄바꿈 제거 (먼저 제거해야 목록/블록 변환 시 정확한 줄바꿈 생성)
   text = text.replace(/\r?\n/g, '');
-  // 줄바꿈 태그
+
+  // 5. <br> → 줄바꿈
   text = text.replace(/<br\s*\/?>/gi, '\n');
 
-  // 순서 목록: <ol> 내의 <li>에 번호 부여
-  text = text.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_m, inner) => {
-    let n = 0;
-    return inner.replace(/<li[^>]*>/gi, () => `${++n}. `);
-  });
+  // 6. 목록 변환 (태그별 상태 머신 — 줄바꿈 제거 후 실행)
+  text = convertListsToWiki(text);
 
-  // 체크박스가 포함된 <li> (일반 <li> 변환 전에 처리)
-  text = text.replace(/<li[^>]*>\s*<input[^>]*checked[^>]*>/gi, '- [x] ');
-  text = text.replace(/<li[^>]*>\s*<input[^>]*type=["']checkbox["'][^>]*>/gi, '- [ ] ');
-
-  // 비순서 목록: 나머지 <li>
-  text = text.replace(/<li[^>]*>/gi, '- ');
-
-  // 독립 체크박스 (<li> 외부)
-  text = text.replace(/<input[^>]*checked[^>]*type=["']checkbox["'][^>]*>/gi, '- [x] ');
-  text = text.replace(/<input[^>]*type=["']checkbox["'][^>]*checked[^>]*>/gi, '- [x] ');
+  // 7. 독립 체크박스 (<li> 외부)
+  text = text.replace(/<input[^>]*checked[^>]*>/gi, '- [x] ');
   text = text.replace(/<input[^>]*type=["']checkbox["'][^>]*>/gi, '- [ ] ');
 
-  // 블록 종료 태그 → 줄바꿈
-  text = text.replace(/<\/(div|p|li|h[1-6]|blockquote|ul|ol)>/gi, '\n');
+  // 8. 블록 종료 태그 → 줄바꿈 (2줄로 단락 구분)
+  text = text.replace(/<\/(div|p|h[1-6]|blockquote)>/gi, '\n\n');
 
-  // 제목 태그
-  text = text.replace(/<h1[^>]*>/gi, '# ');
-  text = text.replace(/<h2[^>]*>/gi, '## ');
-  text = text.replace(/<h3[^>]*>/gi, '### ');
+  // 9. 제목
+  text = text.replace(/<h([1-6])[^>]*>/gi, (_m, n) => '#'.repeat(+n) + ' ');
   // 인용
   text = text.replace(/<blockquote[^>]*>/gi, '> ');
-  // 굵게
+  // 인라인 서식
   text = text.replace(/<(strong|b)>/gi, '**');
   text = text.replace(/<\/(strong|b)>/gi, '**');
-  // 기울임
   text = text.replace(/<(em|i)>/gi, '*');
   text = text.replace(/<\/(em|i)>/gi, '*');
-  // 취소선
   text = text.replace(/<(del|s)>/gi, '~~');
   text = text.replace(/<\/(del|s)>/gi, '~~');
-  // 인라인 코드
   text = text.replace(/<code>/gi, '`');
   text = text.replace(/<\/code>/gi, '`');
-  // 링크 (텍스트와 URL이 같으면 bare URL로)
+  // 링크
   text = text.replace(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi, (_m, href, linkText) => {
     return linkText.trim() === href.trim() ? linkText : `[${linkText}](${href})`;
   });
   // 수평선
-  text = text.replace(/<hr[^>]*>/gi, '---');
-  // 나머지 HTML 태그 제거
+  text = text.replace(/<hr[^>]*>/gi, '\n---\n');
+
+  // 10. 나머지 HTML 태그 제거
   text = text.replace(/<[^>]+>/g, '');
-  // HTML 엔티티 변환
+  // HTML 엔티티
   text = text.replace(/&nbsp;/g, ' ');
   text = text.replace(/&lt;/g, '<');
   text = text.replace(/&gt;/g, '>');
   text = text.replace(/&amp;/g, '&');
-  // 코드 블록 플레이스홀더 복원
-  text = text.replace(/\x00CODEBLOCK(\d+)\x00/g, (_m, idx) => codeBlocks[+idx]);
-  // 연속 빈 줄 정리 (3개 이상 → 2개)
+
+  // 11. 플레이스홀더 복원
+  text = text.replace(/\x00P(\d+)\x00/g, (_m, idx) => preserved[+idx]);
+  // 연속 빈 줄 정리
   text = text.replace(/\n{3,}/g, '\n\n');
   return text.trim();
+}
+
+/**
+ * 인라인 HTML을 Markdown 인라인으로 변환 (표 셀 내부용)
+ */
+function inlineHtmlToWiki(html) {
+  let t = html;
+  t = t.replace(/<(strong|b)>/gi, '**').replace(/<\/(strong|b)>/gi, '**');
+  t = t.replace(/<(em|i)>/gi, '*').replace(/<\/(em|i)>/gi, '*');
+  t = t.replace(/<(del|s)>/gi, '~~').replace(/<\/(del|s)>/gi, '~~');
+  t = t.replace(/<code>/gi, '`').replace(/<\/code>/gi, '`');
+  t = t.replace(/<input[^>]*checked[^>]*>/gi, '[x]');
+  t = t.replace(/<input[^>]*type=["']checkbox["'][^>]*>/gi, '[ ]');
+  t = t.replace(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi, (_m, href, text) => {
+    return text.trim() === href.trim() ? text : `[${text}](${href})`;
+  });
+  t = t.replace(/<[^>]+>/g, '');
+  t = t.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return t.trim();
+}
+
+/**
+ * HTML 내의 <ul>/<ol> 목록을 Markdown으로 변환한다.
+ * 태그별 상태 머신으로 중첩 목록을 들여쓰기로 처리.
+ */
+function convertListsToWiki(html) {
+  const parts = html.split(/(<[^>]+>)/);
+  let result = '';
+  let depth = 0;
+  const listTypeStack = [];  // 'ul' | 'ol'
+  const olCounters = {};     // depth → 현재 번호
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    const tagMatch = part.match(/^<\/?(\w+)([^>]*)>$/i);
+    if (!tagMatch) {
+      // 텍스트 노드
+      result += part;
+      continue;
+    }
+
+    const tagName = tagMatch[1].toLowerCase();
+    const attrs = tagMatch[2] || '';
+    const isClosing = part[1] === '/';
+
+    if ((tagName === 'ul' || tagName === 'ol') && !isClosing) {
+      listTypeStack.push(tagName);
+      depth++;
+      if (tagName === 'ol') olCounters[depth] = 0;
+    } else if ((tagName === 'ul' || tagName === 'ol') && isClosing) {
+      listTypeStack.pop();
+      depth--;
+      if (depth === 0) result += '\n';
+    } else if (tagName === 'li' && !isClosing && depth > 0) {
+      const indent = '  '.repeat(Math.max(0, depth - 1));
+      const type = listTypeStack[listTypeStack.length - 1];
+      if (type === 'ol') {
+        olCounters[depth] = (olCounters[depth] || 0) + 1;
+        result += `\n${indent}${olCounters[depth]}. `;
+      } else {
+        result += `\n${indent}- `;
+      }
+    } else if (tagName === 'li' && isClosing) {
+      // skip
+    } else if (tagName === 'input' && depth > 0 && /type=["']checkbox["']/i.test(attrs)) {
+      // 체크박스: 직전에 추가한 "- "를 "- [x] " 또는 "- [ ] "로 교체
+      if (/checked/i.test(attrs)) {
+        result = result.replace(/- $/, '- [x] ');
+      } else {
+        result = result.replace(/- $/, '- [ ] ');
+      }
+    } else if (depth > 0 && (tagName === 'span' || tagName === 'p')) {
+      // 목록 내 <span>, <p>는 무시 (체크박스 래퍼, 단락)
+    } else {
+      // 목록 내 인라인 태그(<strong> 등)는 유지, 목록 밖도 유지
+      result += part;
+    }
+  }
+
+  return result;
 }
 
 module.exports = { parseWiki, wikiToPlainText, htmlToWiki };
