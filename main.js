@@ -57,6 +57,24 @@ app.whenReady().then(() => {
     }
   });
 
+  // Ctrl+Alt+W → 활성 포스트잇의 편집 모드 전환 (HTML ↔ Wiki)
+  globalShortcut.register('Ctrl+Alt+W', () => {
+    const { BrowserWindow } = require('electron');
+    const focused = BrowserWindow.getFocusedWindow();
+    if (!focused || focused.isDestroyed()) return;
+    // 포스트잇 창인지 확인
+    for (const [id, win] of state.windows.entries()) {
+      if (win === focused) {
+        const postit = state.store.get(id);
+        if (!postit) return;
+        const newMode = (postit.contentType || 'html') === 'html' ? 'wiki' : 'html';
+        state.store.update(id, { contentType: newMode });
+        win.webContents.send('toggle-content-type', newMode);
+        return;
+      }
+    }
+  });
+
   const postits = state.store.getAll();
   const visible = postits.filter(p => !p.hidden);
   if (postits.length === 0) {

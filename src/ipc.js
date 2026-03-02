@@ -43,8 +43,10 @@ function registerIpcHandlers() {
   });
 
   /** 에디터 내용을 저장하고 매니저 목록을 갱신한다. */
-  ipcMain.on('save-content', (_event, { id, content }) => {
-    state.store.update(id, { content });
+  ipcMain.on('save-content', (_event, { id, content, contentType }) => {
+    const update = { content };
+    if (contentType) update.contentType = contentType;
+    state.store.update(id, update);
     notifyManager();
   });
 
@@ -85,7 +87,7 @@ function registerIpcHandlers() {
    *
    * @param {{ id: string, hasSelection: boolean, formatting: Object, inEditor: boolean }} params
    */
-  ipcMain.on('show-context-menu', (event, { id, hasSelection, formatting, inEditor }) => {
+  ipcMain.on('show-context-menu', (event, { id, hasSelection, formatting, inEditor, contentType }) => {
     const items = [
       { label: i18n.t('menu.newPostit'), click: () => createNewPostit() },
     ];
@@ -96,7 +98,8 @@ function registerIpcHandlers() {
       items.push({ label: i18n.t('menu.copy'),  role: 'copy'  });
       items.push({ label: i18n.t('menu.paste'), role: 'paste' });
 
-      if (hasSelection) {
+      // Wiki 모드에서는 포매터(속성 변경) 숨김
+      if (hasSelection && contentType !== 'wiki') {
         items.push({ type: 'separator' });
         items.push({
           label: i18n.t('menu.formatting'),

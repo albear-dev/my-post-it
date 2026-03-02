@@ -132,12 +132,13 @@ function showNotification(postit) {
   nwin.webContents.once('did-finish-load', () => {
     nwin.webContents.send('set-translations', i18n.getAllTranslations());
     nwin.webContents.send('init-notification', {
-      id:        postit.id,
-      content:   postit.content || '',
-      date:      postit.date || '',
-      time:      postit.time || '',
-      priority:  postit.priority ?? 3,
-      alarmDays: postit.alarmDays || [],
+      id:          postit.id,
+      content:     postit.content || '',
+      date:        postit.date || '',
+      time:        postit.time || '',
+      priority:    postit.priority ?? 3,
+      alarmDays:   postit.alarmDays || [],
+      contentType: postit.contentType || 'html',
     });
   });
 

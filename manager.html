@@ -236,8 +236,27 @@
       return div.textContent || div.innerText || '';
     }
 
-    function extractTitle(html) {
-      const text = stripHtml(html);
+    function extractTitle(content, contentType) {
+      if (contentType === 'wiki') {
+        // Wiki: Markdown 마크업 제거 후 첫 줄 추출
+        const lines = content.split('\n');
+        for (const line of lines) {
+          let clean = line.trim();
+          if (!clean) continue;
+          clean = clean.replace(/^#{1,3}\s+/, '');
+          clean = clean.replace(/^>\s*/, '');
+          clean = clean.replace(/^-\s+\[[ xX]\]\s*/, '');
+          clean = clean.replace(/^-\s+/, '');
+          clean = clean.replace(/^\d+\.\s+/, '');
+          clean = clean.replace(/\*\*([^*]+)\*\*/g, '$1');
+          clean = clean.replace(/\*([^*]+)\*/g, '$1');
+          clean = clean.replace(/`([^`]+)`/g, '$1');
+          clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+          if (clean) return clean;
+        }
+        return t('postit.empty');
+      }
+      const text = stripHtml(content);
       const first = text.split('\n').find(l => l.trim());
       return first ? first.trim() : t('postit.empty');
     }
@@ -256,7 +275,10 @@
     function getFilteredPostits() {
       if (!searchKeyword) return allPostits;
       const kw = searchKeyword.toLowerCase();
-      return allPostits.filter(p => stripHtml(p.content).toLowerCase().includes(kw));
+      return allPostits.filter(p => {
+        const text = p.contentType === 'wiki' ? p.content : stripHtml(p.content);
+        return text.toLowerCase().includes(kw);
+      });
     }
 
     // ── Sort ───────────────────────────────
@@ -272,7 +294,7 @@
         case 'time':
           cmp = (a.time || '99:99').localeCompare(b.time || '99:99'); break;
         case 'title':
-          cmp = extractTitle(a.content).localeCompare(extractTitle(b.content), 'ko'); break;
+          cmp = extractTitle(a.content, a.contentType).localeCompare(extractTitle(b.content, b.contentType), 'ko'); break;
         case 'alarm':
           cmp = (a.alarm ? 1 : 0) - (b.alarm ? 1 : 0); break;
         case 'hidden':
@@ -344,7 +366,7 @@
         // 타이틀
         const tdTitle = document.createElement('td');
         tdTitle.className = 'col-title';
-        tdTitle.textContent = extractTitle(p.content);
+        tdTitle.textContent = extractTitle(p.content, p.contentType);
         tdTitle.style.overflow = 'hidden';
         tdTitle.style.textOverflow = 'ellipsis';
         tdTitle.style.whiteSpace = 'nowrap';

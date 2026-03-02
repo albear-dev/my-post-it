@@ -154,9 +154,25 @@
       badge.textContent = `[${p}]`;
       badge.style.color = PRIORITY_COLORS[p] || '#1e88e5';
 
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = data.content || '';
-      const firstLine = tempDiv.innerText.split('\n').find(l => l.trim()) || t('postit.empty');
+      let firstLine;
+      if (data.contentType === 'wiki') {
+        const lines = (data.content || '').split('\n');
+        firstLine = '';
+        for (const line of lines) {
+          let clean = line.trim();
+          if (!clean) continue;
+          clean = clean.replace(/^#{1,3}\s+/, '').replace(/^>\s*/, '');
+          clean = clean.replace(/^-\s+\[[ xX]\]\s*/, '').replace(/^-\s+/, '').replace(/^\d+\.\s+/, '');
+          clean = clean.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+          clean = clean.replace(/`([^`]+)`/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+          if (clean) { firstLine = clean; break; }
+        }
+        firstLine = firstLine || t('postit.empty');
+      } else {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = data.content || '';
+        firstLine = tempDiv.innerText.split('\n').find(l => l.trim()) || t('postit.empty');
+      }
       document.getElementById('titleText').textContent = firstLine;
 
       const parts = [];
@@ -172,8 +188,17 @@
       if (data.time) parts.push(data.time);
       document.getElementById('infoText').textContent = parts.join(' ') || '';
 
-      const lines = tempDiv.innerText.split('\n').filter(l => l.trim());
-      document.getElementById('previewText').textContent = lines.length > 1 ? lines[1] : '';
+      let previewLine = '';
+      if (data.contentType === 'wiki') {
+        const wikiLines = (data.content || '').split('\n').filter(l => l.trim());
+        previewLine = wikiLines.length > 1 ? wikiLines[1].replace(/[#*`>\[\]()-]/g, '').trim() : '';
+      } else {
+        const tempDiv2 = document.createElement('div');
+        tempDiv2.innerHTML = data.content || '';
+        const htmlLines = tempDiv2.innerText.split('\n').filter(l => l.trim());
+        previewLine = htmlLines.length > 1 ? htmlLines[1] : '';
+      }
+      document.getElementById('previewText').textContent = previewLine;
     }
 
     ipcRenderer.on('init-notification', (_e, data) => {

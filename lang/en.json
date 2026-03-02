@@ -116,5 +116,9 @@
   "manager.colHidden": "Hidden",
   "manager.empty": "No postits.",
   "manager.hiddenStatus": "Hidden",
-  "manager.alarmOn": "ON"
+  "manager.alarmOn": "ON",
+
+  "properties.editMode": "Edit Mode",
+  "properties.modeHtml": "HTML (WYSIWYG)",
+  "properties.modeWiki": "Wiki (Markdown)"
 }

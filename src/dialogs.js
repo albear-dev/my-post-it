@@ -93,12 +93,13 @@ function openProperties(postitId) {
   pwin.webContents.once('did-finish-load', () => {
     pwin.webContents.send('set-translations', i18n.getAllTranslations());
     pwin.webContents.send('init-properties', {
-      date:      postit.date      || '',
-      time:      postit.time      || '',
-      priority:  postit.priority  ?? 3,
-      alarm:     postit.alarm     || false,
-      alarmDays: postit.alarmDays || [],
-      color:     postit.color     || '#ffff99',
+      date:        postit.date        || '',
+      time:        postit.time        || '',
+      priority:    postit.priority    ?? 3,
+      alarm:       postit.alarm       || false,
+      alarmDays:   postit.alarmDays   || [],
+      color:       postit.color       || '#ffff99',
+      contentType: postit.contentType || 'html',
     });
   });
 
@@ -145,6 +146,7 @@ function registerDialogIpc() {
         date: props.date, time: props.time, priority: props.priority,
         alarm: props.alarm ?? false, alarmDays: props.alarmDays || [],
         color: props.color || '#ffff99',
+        contentType: props.contentType || 'html',
       });
       const win = state.windows.get(postitId);
       if (win && !win.isDestroyed()) {

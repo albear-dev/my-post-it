@@ -116,5 +116,9 @@
   "manager.colHidden": "숨김",
   "manager.empty": "포스트잇이 없습니다.",
   "manager.hiddenStatus": "숨김",
-  "manager.alarmOn": "ON"
+  "manager.alarmOn": "ON",
+
+  "properties.editMode": "편집 모드",
+  "properties.modeHtml": "HTML (위지윅)",
+  "properties.modeWiki": "Wiki (마크다운)"
 }

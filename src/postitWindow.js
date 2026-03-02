@@ -255,7 +255,8 @@ function createNewPostit() {
     hidden:    false,
     alarm:     false,
     alarmDays: [],
-    color:     '#ffff99',
+    color:       '#ffff99',
+    contentType: 'html',
   };
 
   state.store.create(postit);

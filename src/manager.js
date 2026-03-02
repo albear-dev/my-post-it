@@ -49,15 +49,16 @@ function openManager() {
 function sendManagerData() {
   if (!state.managerWindow || state.managerWindow.isDestroyed()) return;
   const allPostits = state.store.getAll().map(p => ({
-    id:        p.id,
-    content:   p.content || '',
-    date:      p.date || '',
-    time:      p.time || '',
-    priority:  p.priority ?? 3,
-    hidden:    p.hidden || false,
-    alarm:     p.alarm || false,
-    alarmDays: p.alarmDays || [],
-    color:     p.color || '#ffff99',
+    id:          p.id,
+    content:     p.content || '',
+    date:        p.date || '',
+    time:        p.time || '',
+    priority:    p.priority ?? 3,
+    hidden:      p.hidden || false,
+    alarm:       p.alarm || false,
+    alarmDays:   p.alarmDays || [],
+    color:       p.color || '#ffff99',
+    contentType: p.contentType || 'html',
   }));
   state.managerWindow.webContents.send('manager-init', allPostits);
 }
