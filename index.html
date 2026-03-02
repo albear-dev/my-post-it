@@ -976,6 +976,35 @@
         if (insertCheckbox()) {
           e.preventDefault();
         }
+      } else if (e.key === 'Enter') {
+        // --- (3개 이상) → <hr> 자동 변환
+        const sel = window.getSelection();
+        if (sel && sel.isCollapsed && !getClosestLi(sel.anchorNode)) {
+          let block = sel.anchorNode;
+          if (block.nodeType === Node.TEXT_NODE) block = block.parentElement;
+          while (block && block !== editor && block.parentElement !== editor) {
+            block = block.parentElement;
+          }
+          if (block && block !== editor) {
+            const text = block.textContent.trim();
+            if (/^-{3,}$/.test(text)) {
+              e.preventDefault();
+              const hr = document.createElement('hr');
+              const newDiv = document.createElement('div');
+              newDiv.appendChild(document.createElement('br'));
+              block.parentNode.insertBefore(hr, block);
+              block.parentNode.insertBefore(newDiv, block);
+              block.remove();
+              const r = document.createRange();
+              r.setStart(newDiv, 0);
+              r.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(r);
+              schedSave();
+              return;
+            }
+          }
+        }
       } else if (e.key === 'Backspace') {
         const sel = window.getSelection();
         if (sel && sel.isCollapsed) {

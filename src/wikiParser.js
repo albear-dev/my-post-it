@@ -92,7 +92,36 @@ marked.use({
  */
 function parseWiki(text) {
   if (!text) return '';
-  return marked.parse(text).trim();
+
+  // ── 코드 블록/인라인 코드 보호 (이스케이프 치환에서 제외) ──
+  const codeSlots = [];
+  let src = text;
+  src = src.replace(/```[\s\S]*?```/g, (m) => {
+    codeSlots.push(m);
+    return `\x01CODE${codeSlots.length - 1}\x01`;
+  });
+  src = src.replace(/`[^`]+`/g, (m) => {
+    codeSlots.push(m);
+    return `\x01CODE${codeSlots.length - 1}\x01`;
+  });
+
+  // ── 백슬래시 이스케이프 → 플레이스홀더 (marked가 처리하기 전) ──
+  src = src.replace(/\\([^a-zA-Z0-9\s])/g, (_m, ch) => {
+    return `\x00ESC${ch.charCodeAt(0)}\x00`;
+  });
+
+  // ── 코드 블록 복원 ──
+  src = src.replace(/\x01CODE(\d+)\x01/g, (_m, idx) => codeSlots[+idx]);
+
+  // ── marked 실행 ──
+  let html = marked.parse(src).trim();
+
+  // ── 플레이스홀더 → <span data-esc="charCode"> (HTML 에디터에서 보존) ──
+  html = html.replace(/\x00ESC(\d+)\x00/g, (_m, code) => {
+    return `<span data-esc="${code}">&#${code};</span>`;
+  });
+
+  return html;
 }
 
 // ── wikiToPlainText ─────────────────────────────────────────
@@ -145,6 +174,11 @@ function htmlToWiki(html) {
   if (!html) return '';
 
   let text = html;
+
+  // 0. 백슬래시 이스케이프 복원 (<span data-esc="charCode"> → \X)
+  text = text.replace(/<span\s+data-esc="(\d+)">[^<]*<\/span>/gi, (_m, code) => {
+    return `\\${String.fromCharCode(+code)}`;
+  });
 
   // 1. 코드 블록 추출 (내부 줄바꿈 + hljs span 보존)
   const preserved = [];
@@ -259,15 +293,18 @@ function htmlToWiki(html) {
   // 수평선
   text = text.replace(/<hr[^>]*>/gi, '\n---\n');
 
-  // 10. 나머지 HTML 태그 제거
-  text = text.replace(/<[^>]+>/g, '');
+  // 10. 인라인 스타일 span → Markdown 서식
+  text = convertStyledSpans(text);
+
+  // 11. 나머지 HTML 태그 제거 (<u> 태그는 보존 — Markdown에 밑줄 문법 없음)
+  text = text.replace(/<(?!\/?u\b)[^>]+>/g, '');
   // HTML 엔티티
   text = text.replace(/&nbsp;/g, ' ');
   text = text.replace(/&lt;/g, '<');
   text = text.replace(/&gt;/g, '>');
   text = text.replace(/&amp;/g, '&');
 
-  // 11. 플레이스홀더 복원
+  // 12. 플레이스홀더 복원
   text = text.replace(/\x00P(\d+)\x00/g, (_m, idx) => preserved[+idx]);
   // 연속 빈 줄 정리
   text = text.replace(/\n{3,}/g, '\n\n');
@@ -275,20 +312,53 @@ function htmlToWiki(html) {
 }
 
 /**
+ * <span style="...">text</span>을 Markdown 서식으로 변환한다.
+ * 중첩 span을 안쪽부터 처리 (루프).
+ */
+function convertStyledSpans(html) {
+  let text = html;
+  let prev;
+  do {
+    prev = text;
+    // (?:(?!<span[\s>]).)*? — 내부에 다른 <span>이 없는 가장 안쪽 span만 매칭
+    text = text.replace(/<span\s+style="([^"]*)">((?:(?!<span[\s>]).)*?)<\/span>/gi, (_m, style, content) => {
+      let result = content;
+      const isBold          = /font-weight\s*:\s*(bold|[7-9]\d\d)/i.test(style);
+      const isItalic        = /font-style\s*:\s*italic/i.test(style);
+      const isStrikethrough = /text-decoration[^;]*line-through/i.test(style);
+      const isUnderline     = /text-decoration[^;]*underline/i.test(style);
+
+      if (isUnderline)     result = `<u>${result}</u>`;
+      if (isStrikethrough) result = `~~${result}~~`;
+      if (isItalic)        result = `*${result}*`;
+      if (isBold)          result = `**${result}**`;
+
+      return result;
+    });
+  } while (text !== prev);
+  return text;
+}
+
+/**
  * 인라인 HTML을 Markdown 인라인으로 변환 (표 셀 내부용)
  */
 function inlineHtmlToWiki(html) {
   let t = html;
+  // 백슬래시 이스케이프 복원
+  t = t.replace(/<span\s+data-esc="(\d+)">[^<]*<\/span>/gi, (_m, code) => {
+    return `\\${String.fromCharCode(+code)}`;
+  });
   t = t.replace(/<(strong|b)>/gi, '**').replace(/<\/(strong|b)>/gi, '**');
   t = t.replace(/<(em|i)>/gi, '*').replace(/<\/(em|i)>/gi, '*');
   t = t.replace(/<(del|s)>/gi, '~~').replace(/<\/(del|s)>/gi, '~~');
   t = t.replace(/<code>/gi, '`').replace(/<\/code>/gi, '`');
+  t = convertStyledSpans(t);
   t = t.replace(/<input[^>]*checked[^>]*>/gi, '[x]');
   t = t.replace(/<input[^>]*type=["']checkbox["'][^>]*>/gi, '[ ]');
   t = t.replace(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi, (_m, href, text) => {
     return text.trim() === href.trim() ? text : `[${text}](${href})`;
   });
-  t = t.replace(/<[^>]+>/g, '');
+  t = t.replace(/<(?!\/?u\b)[^>]+>/g, '');
   t = t.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   return t.trim();
 }
