@@ -501,14 +501,11 @@
       if (hasScroll) return;
 
       if (contentType === 'wiki') {
-        editorWiki.style.height = 'auto';
-        const scrollH = editorWiki.scrollHeight;
-        const clientH = editorWiki.clientHeight;
-        editorWiki.style.height = scrollH + 'px';
-        if (scrollH > clientH) {
-          const delta = scrollH - clientH;
-          ipcRenderer.send('auto-resize', { id: postitId, deltaHeight: delta });
-        }
+        // textarea 내부에 이미 스크롤이 있으면 (내용 > 보이는 영역) 확장하지 않음
+        // (contentArea가 아닌 textarea 자체의 스크롤을 확인해야 함:
+        //  textarea가 flex:1로 contentArea를 채우므로 contentArea에는 스크롤이 생기지 않음)
+        if (editorWiki.scrollHeight > editorWiki.clientHeight + 2) return;
+        return;
       } else {
         if (contentArea.scrollHeight > contentArea.clientHeight) {
           const delta = contentArea.scrollHeight - contentArea.clientHeight;
@@ -530,6 +527,18 @@
       updateTitleInfo();
       schedSave();
       autoResize();
+
+      // 스크롤이 있으면 커서가 보이도록 맨 아래로 스크롤
+      const contentArea = document.getElementById('content-area');
+      if (contentArea.scrollHeight > contentArea.clientHeight) {
+        // 커서가 마지막 줄 근처인지 확인
+        const pos = editorWiki.selectionStart;
+        const textAfter = editorWiki.value.substring(pos);
+        const linesAfter = textAfter.split('\n').filter(l => l.length > 0).length;
+        if (linesAfter <= 1) {
+          contentArea.scrollTop = contentArea.scrollHeight;
+        }
+      }
     });
 
     // Wiki 에디터: Tab → 공백 삽입
