@@ -190,7 +190,7 @@ function htmlToWiki(html) {
     for (let i = 1; i < rows.length; i++) {
       tbl += '| ' + rows[i].join(' | ') + ' |\n';
     }
-    preserved.push(tbl);
+    preserved.push(tbl + '\n');
     return `\x00P${preserved.length - 1}\x00`;
   });
 

@@ -246,6 +246,26 @@
     }
 
     body.collapsed #content-area { display: none; }
+
+    /* ── 스크롤바 커스텀 ──────────────────────────────────── */
+    #content-area::-webkit-scrollbar,
+    #editor-wiki::-webkit-scrollbar {
+      width: 10px;
+    }
+    #content-area::-webkit-scrollbar-track,
+    #editor-wiki::-webkit-scrollbar-track {
+      background: transparent;
+      margin: 4px 0;
+    }
+    #content-area::-webkit-scrollbar-thumb,
+    #editor-wiki::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 5px;
+    }
+    #content-area::-webkit-scrollbar-thumb:hover,
+    #editor-wiki::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.32);
+    }
   </style>
 </head>
 <body>
