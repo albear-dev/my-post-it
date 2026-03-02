@@ -155,7 +155,9 @@
       text-transform: uppercase;
       font-weight: 600;
       letter-spacing: 0.5px;
+      cursor: pointer;
     }
+    #editor .code-lang:hover { color: #555; }
     #editor .code-copy {
       cursor: pointer;
       font-size: 10pt;
@@ -164,11 +166,36 @@
     }
     #editor .code-copy:hover { opacity: 1; }
 
+    /* 코드 블록 body (라인넘버 + 코드 나란히) */
+    #editor .code-body {
+      display: flex;
+      overflow-x: auto;
+    }
+    #editor .code-lines {
+      display: flex;
+      flex-direction: column;
+      padding: 6px 0;
+      background: rgba(0,0,0,0.03);
+      border-right: 1px solid #ddd;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    #editor .code-lines span {
+      display: block;
+      padding: 0 8px;
+      text-align: right;
+      color: #aaa;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 9pt;
+      line-height: 1.4;
+      min-width: 2.5em;
+    }
     #editor .code-block pre {
+      flex: 1;
       background: none;
       border: none;
       border-radius: 0;
-      padding: 6px 10px 6px 0;
+      padding: 6px 10px;
       margin: 0;
       font-family: 'Consolas', 'Courier New', monospace;
       font-size: 9pt;
@@ -176,20 +203,48 @@
       white-space: pre-wrap;
       word-break: break-all;
     }
-
-    /* 라인 넘버 */
-    #editor .code-block .ln {
-      display: inline-block;
-      width: 2.5em;
-      text-align: right;
-      padding-right: 8px;
-      margin-right: 8px;
-      border-right: 1px solid #ddd;
-      color: #aaa;
-      user-select: none;
-      font-size: 8pt;
-      vertical-align: baseline;
+    #editor .code-block code[contenteditable="true"] {
+      outline: none;
+      display: block;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
+
+    /* 언어 선택 드롭다운 */
+    #code-lang-dropdown {
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 100;
+      width: 180px;
+      max-height: 250px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #code-lang-input {
+      border: none;
+      border-bottom: 1px solid #eee;
+      padding: 6px 8px;
+      font-size: 9pt;
+      outline: none;
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+    #code-lang-list {
+      overflow-y: auto;
+      max-height: 200px;
+    }
+    .code-lang-option {
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 9pt;
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+    .code-lang-option:hover,
+    .code-lang-option.active { background: #e3f2fd; }
 
     /* 기존 pre (코드블록 래퍼 없는 경우 호환) */
     #editor pre {
@@ -355,6 +410,9 @@
     body.read-only #editor {
       -webkit-user-modify: read-only;
     }
+    body.read-only #editor code[contenteditable="true"] {
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -397,6 +455,7 @@
     ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
 
     const { parseWiki, wikiToPlainText, htmlToWiki } = require('./src/wikiParser');
+    const hljs = require('highlight.js');
 
     const postitId       = new URLSearchParams(window.location.search).get('id');
     const editor         = document.getElementById('editor');
@@ -799,22 +858,166 @@
       }
     });
 
-    // ── 코드 블록 복사 버튼 ─────────────────────────────────
+    // ── 코드 블록: 복사 버튼 ────────────────────────────────
     editor.addEventListener('click', e => {
       if (e.target.classList.contains('code-copy')) {
         const block = e.target.closest('.code-block');
         if (!block) return;
         const codeEl = block.querySelector('code');
         if (!codeEl) return;
-        // 라인넘버 span 제거한 순수 텍스트 추출
-        const clone = codeEl.cloneNode(true);
-        clone.querySelectorAll('.ln').forEach(ln => ln.remove());
-        const text = clone.textContent;
+        const text = codeEl.textContent;
         navigator.clipboard.writeText(text).then(() => {
           const btn = e.target;
           btn.textContent = '✓';
           setTimeout(() => { btn.textContent = '📋'; }, 1500);
         });
+      }
+    });
+
+    // ── 코드 블록: 편집 시 라인넘버 동기화 ────────────────
+    function updateCodeLineNumbers(codeEl) {
+      const block = codeEl.closest('.code-block');
+      if (!block) return;
+      const linesDiv = block.querySelector('.code-lines');
+      if (!linesDiv) return;
+      // contenteditable에서 <div>, <br> 등이 줄바꿈으로 나오므로 innerText 사용
+      const text = codeEl.innerText;
+      const lineCount = text ? (text.match(/\n/g) || []).length + 1 : 1;
+      const current = linesDiv.children.length;
+      if (lineCount === current) return;
+      linesDiv.innerHTML = '';
+      for (let i = 1; i <= lineCount; i++) {
+        const s = document.createElement('span');
+        s.textContent = i;
+        linesDiv.appendChild(s);
+      }
+    }
+
+    // input 이벤트는 contenteditable="true"인 <code>에서 발생 → 버블링으로 editor에 도달
+    editor.addEventListener('input', e => {
+      // e.target이 code 자체이거나 code 내부 요소일 수 있음
+      const codeEl = e.target.closest ? e.target.closest('code[contenteditable="true"]') : null;
+      if (codeEl) {
+        updateCodeLineNumbers(codeEl);
+      }
+    });
+
+    // ── 코드 블록: 언어 선택 드롭다운 ────────────────────
+    const CODE_LANGUAGES = [
+      'javascript', 'typescript', 'python', 'java', 'c', 'cpp', 'csharp',
+      'go', 'rust', 'ruby', 'php', 'swift', 'kotlin',
+      'html', 'css', 'sql', 'bash', 'json', 'yaml', 'xml',
+    ];
+
+    // 드롭다운 요소 (document에 1개만 생성, 재사용)
+    const langDropdown = document.createElement('div');
+    langDropdown.id = 'code-lang-dropdown';
+    langDropdown.style.display = 'none';
+    langDropdown.innerHTML = `<input type="text" id="code-lang-input" placeholder="Type or select..."><div id="code-lang-list"></div>`;
+    document.body.appendChild(langDropdown);
+
+    let langDropdownTarget = null; // 현재 대상 .code-block
+
+    function showLangDropdown(langSpan) {
+      const block = langSpan.closest('.code-block');
+      if (!block) return;
+      langDropdownTarget = block;
+
+      // 위치: code-header 아래
+      const header = block.querySelector('.code-header');
+      const rect = header.getBoundingClientRect();
+      langDropdown.style.left = rect.left + 'px';
+      langDropdown.style.top = rect.bottom + 'px';
+      langDropdown.style.display = 'flex';
+
+      const input = langDropdown.querySelector('#code-lang-input');
+      input.value = '';
+      renderLangOptions('');
+      input.focus();
+    }
+
+    function hideLangDropdown() {
+      langDropdown.style.display = 'none';
+      langDropdownTarget = null;
+    }
+
+    function renderLangOptions(filter) {
+      const list = langDropdown.querySelector('#code-lang-list');
+      const lc = filter.toLowerCase();
+      const filtered = lc ? CODE_LANGUAGES.filter(l => l.includes(lc)) : CODE_LANGUAGES;
+      list.innerHTML = '';
+      filtered.forEach(lang => {
+        const div = document.createElement('div');
+        div.className = 'code-lang-option';
+        div.dataset.lang = lang;
+        div.textContent = lang;
+        list.appendChild(div);
+      });
+    }
+
+    function applyLangChange(newLang) {
+      if (!langDropdownTarget || !newLang) return;
+      const block = langDropdownTarget;
+      const langSpan = block.querySelector('.code-lang');
+      const pre = block.querySelector('pre');
+      const codeEl = block.querySelector('code');
+      if (langSpan) langSpan.textContent = newLang;
+      if (pre) pre.setAttribute('data-lang', newLang);
+      if (codeEl) {
+        // 순수 텍스트 추출 후 새 언어로 재하이라이팅
+        const rawText = codeEl.textContent;
+        codeEl.className = `hljs language-${newLang}`;
+        if (hljs.getLanguage(newLang)) {
+          codeEl.innerHTML = hljs.highlight(rawText, { language: newLang }).value;
+        } else {
+          codeEl.textContent = rawText;
+        }
+      }
+      hideLangDropdown();
+      schedSave();
+    }
+
+    // 이벤트: .code-lang 클릭 → 드롭다운 열기
+    editor.addEventListener('click', e => {
+      if (e.target.classList.contains('code-lang')) {
+        e.stopPropagation();
+        if (langDropdown.style.display !== 'none' && langDropdownTarget === e.target.closest('.code-block')) {
+          hideLangDropdown();
+        } else {
+          showLangDropdown(e.target);
+        }
+      }
+    });
+
+    // 이벤트: 드롭다운 입력 필터링
+    langDropdown.addEventListener('input', e => {
+      if (e.target.id === 'code-lang-input') {
+        renderLangOptions(e.target.value);
+      }
+    });
+
+    // 이벤트: 드롭다운 옵션 클릭
+    langDropdown.addEventListener('click', e => {
+      const opt = e.target.closest('.code-lang-option');
+      if (opt) applyLangChange(opt.dataset.lang);
+    });
+
+    // 이벤트: Enter → 직접 입력 적용 또는 첫 번째 옵션 선택
+    langDropdown.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = langDropdown.querySelector('#code-lang-input');
+        const firstOpt = langDropdown.querySelector('.code-lang-option');
+        applyLangChange(input.value.trim() || (firstOpt ? firstOpt.dataset.lang : ''));
+      } else if (e.key === 'Escape') {
+        hideLangDropdown();
+      }
+    });
+
+    // 이벤트: 외부 클릭 → 닫기
+    document.addEventListener('mousedown', e => {
+      if (langDropdown.style.display !== 'none' && !langDropdown.contains(e.target) && !e.target.classList.contains('code-lang')) {
+        hideLangDropdown();
       }
     });
 

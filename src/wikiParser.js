@@ -78,17 +78,15 @@ marked.use({
         highlighted = code;
       }
       const langClass = lang ? ` class="hljs language-${lang}"` : '';
-      // 라인 넘버 추가
+      // 라인 수 계산
       const lines = highlighted.split('\n');
-      // 마지막 빈 줄 제거 (코드 끝 개행)
       if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
-      const numbered = lines.map((ln, i) =>
-        `<span class="ln">${i + 1}</span>${ln}`
-      ).join('\n');
+      const lineNums = lines.map((_ln, i) => `<span>${i + 1}</span>`).join('');
       // 헤더 (언어 라벨 + 복사 버튼)
       const langLabel = lang ? lang : 'code';
-      const header = `<div class="code-header"><span class="code-lang">${langLabel}</span><span class="code-copy" title="Copy">📋</span></div>`;
-      return `<div class="code-block" contenteditable="false">${header}<pre${langAttr}><code${langClass}>${numbered}</code></pre></div>\n`;
+      const header = `<div class="code-header"><span class="code-lang" title="Click to change language">${langLabel}</span><span class="code-copy" title="Copy">📋</span></div>`;
+      const body = `<div class="code-body"><div class="code-lines">${lineNums}</div><pre${langAttr}><code${langClass} contenteditable="true" spellcheck="false">${lines.join('\n')}</code></pre></div>`;
+      return `<div class="code-block" contenteditable="false">${header}${body}</div>\n`;
     }
   }
 });
@@ -208,15 +206,23 @@ function htmlToWiki(html) {
   });
 
   // 1. 코드 블록 추출 (내부 줄바꿈 + hljs span 보존)
-  // 1-0. code-block 래퍼 및 헤더 제거, 라인넘버 스트립
+  // 1-0. code-block 래퍼(헤더, 라인넘버 div 포함) 제거 → <pre> 만 남김
   text = text.replace(/<div class="code-block"[^>]*>[\s\S]*?(<pre[\s\S]*?<\/pre>)\s*<\/div>/gi, '$1');
-  text = text.replace(/<span class="ln">\d+<\/span>/g, '');
   const preserved = [];
   text = text.replace(/<pre([^>]*)><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (_m, attrs, code) => {
     const langMatch = attrs.match(/data-lang=["']([^"']+)["']/);
     const lang = langMatch ? langMatch[1] : '';
-    let decoded = code.replace(/<[^>]+>/g, '');
+    // contenteditable에서 Enter → <div>, <br> 가 삽입되므로 줄바꿈으로 변환
+    let decoded = code;
+    decoded = decoded.replace(/<br\s*\/?>/gi, '\n');
+    decoded = decoded.replace(/<\/div>\s*<div[^>]*>/gi, '\n');
+    decoded = decoded.replace(/<div[^>]*>/gi, '\n');
+    decoded = decoded.replace(/<\/div>/gi, '');
+    // hljs span 등 나머지 태그 제거
+    decoded = decoded.replace(/<[^>]+>/g, '');
     decoded = decoded.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    // 앞뒤 불필요한 빈 줄 정리
+    decoded = decoded.replace(/^\n/, '');
     preserved.push('\n```' + lang + '\n' + decoded + '\n```\n');
     return `\x00P${preserved.length - 1}\x00`;
   });
