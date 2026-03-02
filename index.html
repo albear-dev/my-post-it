@@ -172,6 +172,7 @@
     #editor th {
       background: #f0f0d0;
       font-weight: bold;
+      text-align: center;
     }
 
     /* 이미지 */
@@ -633,14 +634,254 @@
       }
     });
 
-    // Tab → 공백 삽입 / Space → 체크박스 변환
+    // ── HTML 모드 목록 자동 생성/관리 ──────────────────────
+
+    /** 가장 가까운 <li> 조상을 찾는다 */
+    function getClosestLi(node) {
+      let el = node && node.nodeType === 3 ? node.parentElement : node;
+      while (el && el !== editor) {
+        if (el.tagName === 'LI') return el;
+        el = el.parentElement;
+      }
+      return null;
+    }
+
+    /** 커서가 <li> 맨 앞에 있는지 확인 */
+    function isCursorAtStartOfLi(li) {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return false;
+      const range = sel.getRangeAt(0);
+      if (!range.collapsed) return false;
+      const testRange = document.createRange();
+      testRange.setStart(li, 0);
+      testRange.setEnd(range.startContainer, range.startOffset);
+      return testRange.toString().length === 0;
+    }
+
+    /** "- " 또는 "1. " 입력 시 자동으로 목록 생성 */
+    function tryCreateList() {
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
+      const range = sel.getRangeAt(0);
+      const node = range.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE) return false;
+      if (getClosestLi(node)) return false;
+
+      const text = node.textContent;
+      const pos = range.startOffset;
+      const before = text.slice(0, pos);
+
+      let listCmd = null;
+      if (before === '-' || before === '*' || before === '+') {
+        listCmd = 'insertUnorderedList';
+      } else if (/^\d+\.$/.test(before)) {
+        listCmd = 'insertOrderedList';
+      }
+      if (!listCmd) return false;
+
+      // 마커 텍스트 선택 후 삭제
+      const delRange = document.createRange();
+      delRange.setStart(node, 0);
+      delRange.setEnd(node, pos);
+      sel.removeAllRanges();
+      sel.addRange(delRange);
+      document.execCommand('delete');
+
+      // 리스트 생성
+      document.execCommand(listCmd);
+      schedSave();
+      return true;
+    }
+
+    /** 목록 아이템 한 단계 들여쓰기 (Tab) */
+    function indentListItem(li) {
+      const prev = li.previousElementSibling;
+      if (!prev) return;
+
+      const parentList = li.parentElement;
+      const listTag = parentList.tagName.toLowerCase();
+
+      // 이전 아이템의 마지막 자식이 같은 타입의 서브리스트이면 재사용
+      let subList = null;
+      const lastChild = prev.lastElementChild;
+      if (lastChild && lastChild.tagName === parentList.tagName) {
+        subList = lastChild;
+      }
+      if (!subList) {
+        subList = document.createElement(listTag);
+        prev.appendChild(subList);
+      }
+      subList.appendChild(li);
+    }
+
+    /** 목록 아이템 한 단계 내어쓰기 (Shift+Tab) */
+    function outdentListItem(li) {
+      const parentList = li.parentElement;
+      const grandparentLi = parentList.parentElement;
+      if (!grandparentLi || grandparentLi.tagName !== 'LI') return;
+
+      const grandparentList = grandparentLi.parentElement;
+
+      // 현재 아이템 뒤의 형제들을 새 서브리스트로 이동
+      const afterSiblings = [];
+      let next = li.nextElementSibling;
+      while (next) {
+        afterSiblings.push(next);
+        next = next.nextElementSibling;
+      }
+
+      grandparentList.insertBefore(li, grandparentLi.nextSibling);
+
+      if (afterSiblings.length > 0) {
+        const newSubList = document.createElement(parentList.tagName);
+        afterSiblings.forEach(s => newSubList.appendChild(s));
+        li.appendChild(newSubList);
+      }
+
+      if (parentList.children.length === 0) {
+        parentList.remove();
+      }
+    }
+
+    /** Backspace: 목록 아이템 제거 → 일반 텍스트로 */
+    function removeListItem(li) {
+      const parentList = li.parentElement;
+
+      // 중첩 목록이면 outdent
+      if (parentList.parentElement && parentList.parentElement.tagName === 'LI') {
+        outdentListItem(li);
+        return;
+      }
+
+      // 내용 추출 (중첩 리스트 제외)
+      const div = document.createElement('div');
+      Array.from(li.childNodes).forEach(child => {
+        if (child.nodeType === 1 && (child.tagName === 'UL' || child.tagName === 'OL')) return;
+        div.appendChild(child);
+      });
+      if (!div.childNodes.length) div.appendChild(document.createElement('br'));
+
+      const wasFirst = !li.previousElementSibling;
+      const afterItems = [];
+      let next = li.nextElementSibling;
+      while (next) {
+        afterItems.push(next);
+        next = next.nextElementSibling;
+      }
+
+      const parent = parentList.parentNode;
+      li.remove();
+
+      if (parentList.children.length === 0) {
+        parent.replaceChild(div, parentList);
+      } else if (wasFirst) {
+        parent.insertBefore(div, parentList);
+      } else {
+        parent.insertBefore(div, parentList.nextSibling);
+        if (afterItems.length > 0) {
+          const newList = document.createElement(parentList.tagName);
+          afterItems.forEach(item => newList.appendChild(item));
+          parent.insertBefore(newList, div.nextSibling);
+        }
+      }
+
+      // 커서 배치
+      const sel = window.getSelection();
+      const newRange = document.createRange();
+      newRange.setStart(div.firstChild || div, 0);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      schedSave();
+    }
+
+    /** 선택 영역 내의 <li> 수집 (리프만 — 상위 depth 제외) */
+    function getSelectedListItems() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return [];
+      const range = sel.getRangeAt(0);
+      const allLis = [];
+      editor.querySelectorAll('li').forEach(li => {
+        if (range.intersectsNode(li)) allLis.push(li);
+      });
+      // 다른 선택된 li를 자식으로 포함하는 li는 제외 (리프만 남김)
+      return allLis.filter(li => !allLis.some(other => other !== li && li.contains(other)));
+    }
+
+    // ── Tab / Space / Backspace 키 처리 ─────────────────────
     editor.addEventListener('keydown', e => {
       if (e.key === 'Tab') {
         e.preventDefault();
+        const sel = window.getSelection();
+
+        // 블록 선택: 선택된 리프 목록 아이템에만 적용
+        if (sel && !sel.isCollapsed) {
+          const lis = getSelectedListItems();
+          if (lis.length > 0) {
+            const savedRange = sel.getRangeAt(0).cloneRange();
+            if (e.shiftKey) {
+              // 각 아이템이 outdent 가능한지 검증 (중첩 목록이어야 함)
+              const valid = lis.filter(li => {
+                const pl = li.parentElement;
+                return pl && pl.parentElement && pl.parentElement.tagName === 'LI';
+              });
+              if (valid.length > 0) {
+                [...valid].reverse().forEach(li => outdentListItem(li));
+              }
+            } else {
+              // 각 아이템이 indent 가능한지 검증 (이전 형제가 있어야 함)
+              const valid = lis.filter(li => !!li.previousElementSibling);
+              if (valid.length > 0) {
+                valid.forEach(li => indentListItem(li));
+              }
+            }
+            // 선택 영역 복원
+            try { sel.removeAllRanges(); sel.addRange(savedRange); } catch(_) {}
+            schedSave();
+            return;
+          }
+        }
+
+        // 단일 커서가 목록 안에 있으면 들여쓰기/내어쓰기
+        const li = sel ? getClosestLi(sel.anchorNode) : null;
+        if (li) {
+          // 커서 위치 저장
+          const sNode = sel.anchorNode, sOff = sel.anchorOffset;
+          if (e.shiftKey) {
+            outdentListItem(li);
+          } else {
+            indentListItem(li);
+          }
+          // 커서 위치 복원
+          try {
+            const r = document.createRange();
+            r.setStart(sNode, sOff);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          } catch(_) {}
+          schedSave();
+          return;
+        }
+
+        // 목록 밖: 공백 삽입
         document.execCommand('insertText', false, '    ');
       } else if (e.key === ' ') {
+        if (tryCreateList()) {
+          e.preventDefault();
+          return;
+        }
         if (insertCheckbox()) {
           e.preventDefault();
+        }
+      } else if (e.key === 'Backspace') {
+        const sel = window.getSelection();
+        if (sel && sel.isCollapsed) {
+          const li = getClosestLi(sel.anchorNode);
+          if (li && isCursorAtStartOfLi(li)) {
+            e.preventDefault();
+            removeListItem(li);
+          }
         }
       }
     });
