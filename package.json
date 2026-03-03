@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build": "electron-packager . MyPostit --platform=win32 --arch=x64 --out=dist --overwrite --ignore=dist --ignore=node_modules/.cache"
+    "build": "electron-builder --win portable",
+    "build:dir": "electron-builder --win dir"
   },
   "keywords": [
     "electron",
@@ -16,9 +17,43 @@
   ],
   "author": "Myself",
   "license": "MIT",
+  "build": {
+    "appId": "com.mypostit.app",
+    "productName": "MyPostit",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "formatter.html",
+      "manager.html",
+      "notification.html",
+      "password.html",
+      "properties.html",
+      "src/**/*",
+      "lang/**/*",
+      "img/**/*",
+      "node_modules/marked/**/*",
+      "node_modules/highlight.js/**/*"
+    ],
+    "win": {
+      "icon": "img/postit.png",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "MyPostit-portable.exe"
+    }
+  },
   "devDependencies": {
-    "@electron/packager": "^18.0.0",
-    "electron": "^28.0.0"
+    "electron": "^28.0.0",
+    "electron-builder": "^25.1.8"
   },
   "dependencies": {
     "highlight.js": "^11.11.1",

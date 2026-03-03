@@ -133,11 +133,21 @@ function parseWiki(text) {
       });
   } while (src !== prevSrc);
 
+  // ── 빈 줄 보존 (3+ 연속 줄바꿈 → 마커 단락) ──
+  // 코드 블록이 플레이스홀더 상태이므로 코드 내부 빈 줄에 영향 없음
+  src = src.replace(/\n{3,}/g, (m) => {
+    const extra = m.length - 2; // \n\n = 1개 단락 구분, 나머지는 추가 빈 줄
+    return '\n\n' + '\x01EMP\x01\n\n'.repeat(extra);
+  });
+
   // ── 코드 블록 복원 ──
   src = src.replace(/\x01CODE(\d+)\x01/g, (_m, idx) => codeSlots[+idx]);
 
   // ── marked 실행 ──
   let html = marked.parse(src).trim();
+
+  // ── 빈 줄 마커 → 빈 단락 ──
+  html = html.replace(/<p>\x01EMP\x01<\/p>/g, '<p><br></p>');
 
   // ── 플레이스홀더 → <span data-esc="charCode"> (HTML 에디터에서 보존) ──
   html = html.replace(/\x00ESC(\d+)\x00/g, (_m, code) => {
@@ -264,6 +274,9 @@ function htmlToWiki(html) {
     return `\x00P${preserved.length - 1}\x00`;
   });
 
+  // 2.5 빈 단락 보존 (<p><br></p>, <div><br></div> 등 → 마커)
+  text = text.replace(/<(p|div)[^>]*>\s*(?:<br\s*\/?>)?\s*<\/\1>/gi, '\x00EL\x00');
+
   // 3. 이미지 변환 (크기 정보 보존)
   text = text.replace(/<img[^>]*?>/gi, (imgTag) => {
     const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
@@ -342,8 +355,10 @@ function htmlToWiki(html) {
 
   // 12. 플레이스홀더 복원
   text = text.replace(/\x00P(\d+)\x00/g, (_m, idx) => preserved[+idx]);
-  // 연속 빈 줄 정리
+  // 연속 빈 줄 정리 (빈 단락 마커는 보존)
   text = text.replace(/\n{3,}/g, '\n\n');
+  // 빈 단락 마커 → 줄바꿈 복원
+  text = text.replace(/\x00EL\x00/g, '\n');
   return text.trim();
 }
 
