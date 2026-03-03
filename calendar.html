@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Calendar</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 9pt;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── 툴바 ─────────────────────────────────────────── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      flex-shrink: 0;
+    }
+    #toolbar button {
+      padding: 4px 12px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 9pt;
+      white-space: nowrap;
+    }
+    #toolbar button:hover { background: #eee; }
+    #monthLabel {
+      font-size: 11pt;
+      font-weight: 600;
+      margin-left: 8px;
+      color: #333;
+    }
+    .toolbar-spacer { flex: 1; }
+
+    /* ── 요일 헤더 ────────────────────────────────────── */
+    #day-headers {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: #f0f0f0;
+      border-bottom: 2px solid #ccc;
+      flex-shrink: 0;
+    }
+    #day-headers span {
+      text-align: center;
+      padding: 5px 0;
+      font-weight: 600;
+      font-size: 8.5pt;
+      color: #555;
+    }
+    #day-headers span:first-child { color: #e53935; }
+    #day-headers span:last-child  { color: #1e88e5; }
+
+    /* ── 캘린더 그리드 ────────────────────────────────── */
+    #calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      flex: 1;
+      gap: 1px;
+      background: #ddd;
+      overflow: hidden;
+    }
+
+    .cal-cell {
+      background: #fff;
+      padding: 2px 4px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+      cursor: default;
+    }
+    .cal-cell.other-month { background: #fafafa; }
+    .cal-cell.other-month .day-number { color: #ccc; }
+    .cal-cell.today { background: #fff8e1; }
+    .cal-cell.today .day-number {
+      background: #f44336;
+      color: #fff !important;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      line-height: 20px;
+      text-align: center;
+    }
+
+    .day-number {
+      font-size: 8.5pt;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 1px;
+      flex-shrink: 0;
+    }
+    .cal-cell:nth-child(7n+1) .day-number { color: #e53935; }
+    .cal-cell:nth-child(7n)   .day-number { color: #1e88e5; }
+
+    /* 드래그 오버 시 셀 강조 */
+    .cal-cell.drag-over {
+      background: #e3f2fd;
+      outline: 2px dashed #1e88e5;
+      outline-offset: -2px;
+    }
+
+    /* ── 셀 내 포스트잇 엔트리 ────────────────────────── */
+    .cal-entries {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .cal-entries::-webkit-scrollbar { width: 3px; }
+    .cal-entries::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+
+    .cal-entry {
+      font-size: 7.5pt;
+      padding: 1px 3px;
+      margin-bottom: 1px;
+      border-radius: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+    .cal-entry:hover { filter: brightness(0.92); }
+    .cal-entry.dragging { opacity: 0.4; }
+
+    /* 우선순위 색상 */
+    .cal-entry.priority-1 { border-left-color: #e53935; background: #fdecea; }
+    .cal-entry.priority-2 { border-left-color: #f9a825; background: #fff8e1; }
+    .cal-entry.priority-3 { border-left-color: #1e88e5; background: #e3f2fd; }
+    .cal-entry.priority-4 { border-left-color: #43a047; background: #e8f5e9; }
+    .cal-entry.priority-5 { border-left-color: #888888; background: #f5f5f5; }
+
+    /* 매일 반복 포스트잇 (연하게) */
+    .cal-entry.daily { opacity: 0.6; }
+
+    /* 주간반복 아이콘 */
+    .cal-entry .repeat-icon { font-size: 7pt; margin-left: 2px; opacity: 0.7; }
+
+    /* +N more 링크 */
+    .cal-more {
+      font-size: 7pt;
+      color: #1e88e5;
+      cursor: pointer;
+      padding: 1px 3px;
+    }
+    .cal-more:hover { text-decoration: underline; }
+
+    /* ── 툴팁 ─────────────────────────────────────────── */
+    .tooltip {
+      position: fixed;
+      background: #333;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 8.5pt;
+      max-width: 220px;
+      pointer-events: none;
+      z-index: 999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .tooltip .tip-title { font-weight: 600; margin-bottom: 2px; }
+    .tooltip .tip-time  { color: #aaa; font-size: 7.5pt; }
+  </style>
+</head>
+<body>
+
+  <!-- 툴바 -->
+  <div id="toolbar">
+    <button id="btnPrevMonth" title="Previous month">&#9664;</button>
+    <button id="btnToday" data-i18n="calendar.today">Today</button>
+    <button id="btnNextMonth" title="Next month">&#9654;</button>
+    <span id="monthLabel"></span>
+    <div class="toolbar-spacer"></div>
+  </div>
+
+  <!-- 요일 헤더 -->
+  <div id="day-headers"></div>
+
+  <!-- 캘린더 그리드 -->
+  <div id="calendar-grid"></div>
+
+  <!-- 툴팁 (숨김) -->
+  <div id="tooltip" class="tooltip" style="display:none;">
+    <div class="tip-title"></div>
+    <div class="tip-time"></div>
+  </div>
+
+<script>
+  const { ipcRenderer } = require('electron');
+
+  // ── i18n ─────────────────────────────────────────────
+  let _translations = {};
+  function t(key, params) {
+    let str = _translations[key] || key;
+    if (params) Object.entries(params).forEach(([k, v]) => { str = str.replace(`{${k}}`, v); });
+    return str;
+  }
+  function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    renderCalendar();
+  }
+  ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
+
+  // ── 상태 ─────────────────────────────────────────────
+  let allPostits = [];
+  let currentYear  = new Date().getFullYear();
+  let currentMonth = new Date().getMonth();
+
+  const MAX_VISIBLE_ENTRIES = 3;
+
+  // ── DOM 참조 ─────────────────────────────────────────
+  const monthLabel   = document.getElementById('monthLabel');
+  const calendarGrid = document.getElementById('calendar-grid');
+  const tooltip      = document.getElementById('tooltip');
+  const tipTitle     = tooltip.querySelector('.tip-title');
+  const tipTime      = tooltip.querySelector('.tip-time');
+
+  // ── 유틸리티 ─────────────────────────────────────────
+
+  function stripHtml(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent || div.innerText || '';
+  }
+
+  function extractTitle(content, contentType) {
+    if (!content) return t('postit.empty');
+    if (contentType === 'wiki') {
+      const lines = content.split('\n');
+      for (const line of lines) {
+        let clean = line.trim();
+        if (!clean || clean.startsWith('```')) continue;
+        clean = clean.replace(/^#{1,6}\s+/, '');
+        clean = clean.replace(/^>\s*/, '');
+        clean = clean.replace(/^[-*+]\s+(\[[ xX]\]\s*)?/, '');
+        clean = clean.replace(/^\d+\.\s+/, '');
+        clean = clean.replace(/\*\*([^*]+)\*\*/g, '$1');
+        clean = clean.replace(/\*([^*]+)\*/g, '$1');
+        clean = clean.replace(/`([^`]+)`/g, '$1');
+        clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        clean = clean.replace(/\{\{\{#[a-zA-Z0-9]+(?:#[a-zA-Z0-9]+)?\s+([\s\S]*?)\}\}\}/g, '$1');
+        if (clean) return clean;
+      }
+      return t('postit.empty');
+    }
+    const text = stripHtml(content);
+    const first = text.split('\n').find(l => l.trim());
+    return first ? first.trim() : t('postit.empty');
+  }
+
+  function formatDate(year, month, day) {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  // ── 날짜별 포스트잇 필터링 ───────────────────────────
+
+  function getPostitsForDate(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    const dow = date.getDay();
+
+    return allPostits.filter(p => {
+      if (p.hidden) return false;
+      const days = p.alarmDays || [];
+
+      // 주간 반복: 해당 요일 매치
+      if (days.length > 0 && p.time) {
+        return days.includes(dow);
+      }
+      // 날짜 일치 (알람 유무 무관)
+      if (p.date === dateStr) {
+        return true;
+      }
+      // 매일 알람 (시간만 있고 날짜/요일 없음)
+      if (p.alarm && p.time && !p.date && days.length === 0) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  /** 포스트잇이 매일반복인지 확인 */
+  function isDaily(p) {
+    return p.alarm && p.time && !p.date && (p.alarmDays || []).length === 0;
+  }
+
+  /** 포스트잇이 주간반복인지 확인 */
+  function isWeekly(p) {
+    return (p.alarmDays || []).length > 0 && !!p.time;
+  }
+
+  // ── 렌더링 ───────────────────────────────────────────
+
+  function renderCalendar() {
+    // 월 라벨
+    const monthName = t(`calendar.month.${currentMonth}`);
+    monthLabel.textContent = `${monthName} ${currentYear}`;
+
+    // 요일 헤더
+    const dayHeaders = document.getElementById('day-headers');
+    dayHeaders.innerHTML = '';
+    for (let d = 0; d < 7; d++) {
+      const span = document.createElement('span');
+      span.textContent = t(`day.${d}`);
+      dayHeaders.appendChild(span);
+    }
+
+    // 그리드 계산
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
+
+    calendarGrid.innerHTML = '';
+
+    const today = new Date();
+    const todayStr = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
+
+    for (let i = 0; i < 42; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell';
+
+      let year, month, day;
+      if (i < firstDay) {
+        day = prevMonthDays - firstDay + i + 1;
+        month = currentMonth - 1;
+        year = currentYear;
+        if (month < 0) { month = 11; year--; }
+        cell.classList.add('other-month');
+      } else if (i - firstDay >= daysInMonth) {
+        day = i - firstDay - daysInMonth + 1;
+        month = currentMonth + 1;
+        year = currentYear;
+        if (month > 11) { month = 0; year++; }
+        cell.classList.add('other-month');
+      } else {
+        day = i - firstDay + 1;
+        month = currentMonth;
+        year = currentYear;
+      }
+
+      const dateStr = formatDate(year, month, day);
+      cell.dataset.date = dateStr;
+
+      // 오늘 강조
+      if (dateStr === todayStr) cell.classList.add('today');
+
+      // 날짜 숫자
+      const dayNum = document.createElement('div');
+      dayNum.className = 'day-number';
+      dayNum.textContent = day;
+      cell.appendChild(dayNum);
+
+      // 포스트잇 엔트리
+      const entries = getPostitsForDate(dateStr);
+      if (entries.length > 0) {
+        // 시간순 정렬
+        entries.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+        const entriesDiv = document.createElement('div');
+        entriesDiv.className = 'cal-entries';
+
+        const visible = entries.slice(0, MAX_VISIBLE_ENTRIES);
+        const overflow = entries.length - MAX_VISIBLE_ENTRIES;
+
+        visible.forEach(p => {
+          entriesDiv.appendChild(createEntryEl(p, dateStr));
+        });
+
+        // +N more
+        if (overflow > 0) {
+          const more = document.createElement('div');
+          more.className = 'cal-more';
+          more.textContent = t('calendar.moreEntries', { count: overflow });
+          more.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // 나머지 엔트리 펼치기
+            more.remove();
+            entries.slice(MAX_VISIBLE_ENTRIES).forEach(p => {
+              entriesDiv.appendChild(createEntryEl(p, dateStr));
+            });
+          });
+          entriesDiv.appendChild(more);
+        }
+
+        cell.appendChild(entriesDiv);
+      }
+
+      // 날짜 셀 우클릭 → 새 포스트잇
+      cell.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        ipcRenderer.send('calendar-date-context', { dateStr });
+      });
+
+      // 드래그앤드롭: 드롭 타겟
+      cell.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        cell.classList.add('drag-over');
+      });
+      cell.addEventListener('dragleave', () => {
+        cell.classList.remove('drag-over');
+      });
+      cell.addEventListener('drop', (e) => {
+        e.preventDefault();
+        cell.classList.remove('drag-over');
+        const postitId = e.dataTransfer.getData('text/postit-id');
+        if (postitId) {
+          ipcRenderer.send('calendar-move-date', { id: postitId, newDate: dateStr });
+        }
+      });
+
+      calendarGrid.appendChild(cell);
+    }
+  }
+
+  /** 엔트리 DOM 요소 생성 */
+  function createEntryEl(p, dateStr) {
+    const entry = document.createElement('div');
+    entry.className = `cal-entry priority-${p.priority ?? 3}`;
+    entry.dataset.id = p.id;
+
+    if (isDaily(p)) entry.classList.add('daily');
+
+    // 드래그 가능 (주간반복/매일은 날짜 이동 불가)
+    if (!isWeekly(p) && !isDaily(p)) {
+      entry.draggable = true;
+      entry.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/postit-id', p.id);
+        e.dataTransfer.effectAllowed = 'move';
+        entry.classList.add('dragging');
+      });
+      entry.addEventListener('dragend', () => {
+        entry.classList.remove('dragging');
+      });
+    }
+
+    // 시간 + 타이틀
+    const timeLabel = p.time ? p.time + ' ' : '';
+    const title = p.locked ? t('manager.lockedContent') : extractTitle(p.content, p.contentType);
+    entry.textContent = timeLabel + title;
+
+    // 주간반복 아이콘
+    if (isWeekly(p)) {
+      const icon = document.createElement('span');
+      icon.className = 'repeat-icon';
+      icon.textContent = '\u21BB';
+      entry.appendChild(icon);
+    }
+
+    // 더블클릭 → 포스트잇 활성화
+    entry.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      ipcRenderer.send('calendar-activate', { id: p.id });
+    });
+
+    // 우클릭 → 컨텍스트 메뉴
+    entry.addEventListener('contextmenu', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      ipcRenderer.send('calendar-entry-context', { id: p.id });
+    });
+
+    // 호버 → 툴팁
+    entry.addEventListener('mouseenter', (e) => {
+      if (p.locked) return;
+      const preview = extractTitle(p.content, p.contentType);
+      tipTitle.textContent = preview.substring(0, 100);
+      if (p.time) {
+        const dateInfo = isDaily(p) ? t('calendar.everyDay') : (p.date || '');
+        tipTime.textContent = dateInfo + ' ' + p.time;
+      } else {
+        tipTime.textContent = p.date || '';
+      }
+      tooltip.style.display = '';
+      positionTooltip(e);
+    });
+    entry.addEventListener('mousemove', positionTooltip);
+    entry.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    return entry;
+  }
+
+  function positionTooltip(e) {
+    let x = e.clientX + 12;
+    let y = e.clientY + 12;
+    // 화면 오른쪽/아래쪽 가장자리 보정
+    const tw = 220, th = 60;
+    if (x + tw > window.innerWidth) x = e.clientX - tw - 4;
+    if (y + th > window.innerHeight) y = e.clientY - th - 4;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  }
+
+  // ── 내비게이션 ───────────────────────────────────────
+
+  document.getElementById('btnPrevMonth').addEventListener('click', () => {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderCalendar();
+  });
+  document.getElementById('btnNextMonth').addEventListener('click', () => {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    renderCalendar();
+  });
+  document.getElementById('btnToday').addEventListener('click', () => {
+    const now = new Date();
+    currentYear = now.getFullYear();
+    currentMonth = now.getMonth();
+    renderCalendar();
+  });
+
+  // ── 키보드 단축키 ───────────────────────────────────
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.close();
+    if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.altKey) {
+      currentMonth--;
+      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+      renderCalendar();
+    }
+    if (e.key === 'ArrowRight' && !e.ctrlKey && !e.altKey) {
+      currentMonth++;
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+      renderCalendar();
+    }
+  });
+
+  // ── IPC: 데이터 수신 ────────────────────────────────
+
+  ipcRenderer.on('calendar-init', (_e, postits) => {
+    allPostits = postits;
+    renderCalendar();
+  });
+</script>
+</body>
+</html>

@@ -144,5 +144,27 @@
 
   "manager.lockedContent": "🔒 잠금됨",
 
-  "badge.readOnly": "읽기"
+  "badge.readOnly": "읽기",
+
+  "tray.calendar": "캘린더",
+  "window.calendarTitle": "캘린더",
+
+  "calendar.today": "오늘",
+  "calendar.newPostitOnDate": "{date}에 새 포스트잇",
+  "calendar.editProperties": "속성 편집",
+  "calendar.deletePostit": "포스트잇 삭제",
+  "calendar.everyDay": "매일",
+  "calendar.moreEntries": "+{count}개 더",
+  "calendar.month.0": "1월",
+  "calendar.month.1": "2월",
+  "calendar.month.2": "3월",
+  "calendar.month.3": "4월",
+  "calendar.month.4": "5월",
+  "calendar.month.5": "6월",
+  "calendar.month.6": "7월",
+  "calendar.month.7": "8월",
+  "calendar.month.8": "9월",
+  "calendar.month.9": "10월",
+  "calendar.month.10": "11월",
+  "calendar.month.11": "12월"
 }

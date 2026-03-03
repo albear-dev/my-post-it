@@ -4,8 +4,8 @@
   "description": "A simple desktop sticky note application",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron .",
+    "start": "node launch.js",
+    "dev": "node launch.js",
     "build": "electron-builder --win portable",
     "build:dir": "electron-builder --win dir"
   },
@@ -28,6 +28,7 @@
       "index.html",
       "formatter.html",
       "manager.html",
+      "calendar.html",
       "notification.html",
       "password.html",
       "properties.html",

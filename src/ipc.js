@@ -27,6 +27,7 @@ function registerIpcHandlers() {
   const { createNewPostit, confirmAndDelete, toggleCollapse } = require('./postitWindow');
   const { openFormatter, openProperties, openPasswordDialog } = require('./dialogs');
   const { openManager, notifyManager } = require('./manager');
+  const { notifyCalendar } = require('./calendar');
   const { hidePostit } = require('./postitWindow');
 
   /**
@@ -50,10 +51,11 @@ function registerIpcHandlers() {
     notifyManager();
   });
 
-  /** 새 포스트잇을 생성하고 매니저 목록을 갱신한다. */
+  /** 새 포스트잇을 생성하고 매니저·캘린더 목록을 갱신한다. */
   ipcMain.on('create-postit', () => {
     createNewPostit();
     notifyManager();
+    notifyCalendar();
   });
 
   /** 포스트잇 삭제 (확인 다이얼로그 표시). */

@@ -20,6 +20,7 @@ function rebuildTrayMenu() {
 
   const { createNewPostit, unhidePostit } = require('./postitWindow');
   const { openManager, notifyManager } = require('./manager');
+  const { openCalendar } = require('./calendar');
 
   const locales = i18n.getAvailableLocales();
   const currentLocale = i18n.getLocale();
@@ -34,6 +35,7 @@ function rebuildTrayMenu() {
   const contextMenu = Menu.buildFromTemplate([
     { label: i18n.t('tray.newPostit'), click: () => { createNewPostit(); notifyManager(); } },
     { label: i18n.t('tray.allList'),   click: () => openManager() },
+    { label: i18n.t('tray.calendar'),  click: () => openCalendar() },
     { label: i18n.t('tray.showAll'),   click: () => {
       state.store.getAll().forEach(p => { if (p.hidden) unhidePostit(p.id); });
       for (const win of state.windows.values()) {

@@ -87,13 +87,16 @@ function notifyManager() {
  */
 function registerManagerIpc() {
   const { hidePostit, unhidePostit, activatePostit, createNewPostit } = require('./postitWindow');
+  const { notifyCalendar } = require('./calendar');
 
   ipcMain.on('manager-hide', (_event, { ids }) => {
     ids.forEach(id => hidePostit(id));
+    notifyCalendar();
   });
 
   ipcMain.on('manager-unhide', (_event, { ids }) => {
     ids.forEach(id => unhidePostit(id));
+    notifyCalendar();
   });
 
   /** 선택한 포스트잇을 확인 후 일괄 삭제한다. */
@@ -116,6 +119,7 @@ function registerManagerIpc() {
         state.store.delete(id);
       });
       notifyManager();
+      notifyCalendar();
     }
   });
 
@@ -126,6 +130,7 @@ function registerManagerIpc() {
   ipcMain.on('manager-create', () => {
     createNewPostit();
     notifyManager();
+    notifyCalendar();
   });
 
   /** 모든 포스트잇을 보이기 + 최상위 활성화한다. */
@@ -140,6 +145,7 @@ function registerManagerIpc() {
       win.setAlwaysOnTop(true);
       win.setAlwaysOnTop(false);
     }
+    notifyCalendar();
   });
 
   /** 모든 포스트잇을 숨긴다. */
@@ -147,6 +153,7 @@ function registerManagerIpc() {
     state.store.getAll().forEach(p => {
       if (!p.hidden) hidePostit(p.id);
     });
+    notifyCalendar();
   });
 }
 

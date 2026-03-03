@@ -170,6 +170,7 @@ function closeNotification(id) {
  */
 function registerAlarmIpc() {
   const { notifyManager } = require('./manager');
+  const { notifyCalendar } = require('./calendar');
 
   /**
    * 30분 연기: 반복 알림(요일/매일)은 dismissedUntil 쿨다운 설정,
@@ -197,6 +198,7 @@ function registerAlarmIpc() {
           win.webContents.send('properties-changed', updated);
         }
         notifyManager();
+        notifyCalendar();
       }
     }
     closeNotification(id);
@@ -211,6 +213,7 @@ function registerAlarmIpc() {
       win.webContents.send('properties-changed', updated);
     }
     notifyManager();
+    notifyCalendar();
     closeNotification(id);
   });
 

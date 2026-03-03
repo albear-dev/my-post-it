@@ -15,6 +15,7 @@
  * - src/dialogs.js      : 포매터·속성 편집 창
  * - src/tray.js         : 시스템 트레이
  * - src/ipc.js          : 기본 IPC·컨텍스트 메뉴
+ * - src/calendar.js     : 캘린더 창
  */
 
 const { app, globalShortcut } = require('electron');
@@ -29,6 +30,7 @@ const { registerDragHandlers } = require('./src/drag');
 const { registerManagerIpc } = require('./src/manager');
 const { registerDialogIpc } = require('./src/dialogs');
 const { registerIpcHandlers } = require('./src/ipc');
+const { registerCalendarIpc } = require('./src/calendar');
 
 // ─── IPC 핸들러 등록 (app.whenReady 전에 등록해도 안전) ───────────────────────
 registerIpcHandlers();
@@ -36,6 +38,7 @@ registerDragHandlers();
 registerAlarmIpc();
 registerManagerIpc();
 registerDialogIpc();
+registerCalendarIpc();
 
 // ─── 앱 라이프사이클 ───────────────────────────────────────────────────────────
 
