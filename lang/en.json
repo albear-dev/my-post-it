@@ -166,5 +166,9 @@
   "calendar.month.8": "September",
   "calendar.month.9": "October",
   "calendar.month.10": "November",
-  "calendar.month.11": "December"
+  "calendar.month.11": "December",
+
+  "menu.calendar": "Calendar",
+  "properties.today": "Today",
+  "save.notification": "Saved"
 }

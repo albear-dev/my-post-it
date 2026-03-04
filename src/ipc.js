@@ -27,7 +27,7 @@ function registerIpcHandlers() {
   const { createNewPostit, confirmAndDelete, toggleCollapse } = require('./postitWindow');
   const { openFormatter, openProperties, openPasswordDialog } = require('./dialogs');
   const { openManager, notifyManager } = require('./manager');
-  const { notifyCalendar } = require('./calendar');
+  const { notifyCalendar, openCalendar } = require('./calendar');
   const { hidePostit } = require('./postitWindow');
 
   /**
@@ -43,12 +43,13 @@ function registerIpcHandlers() {
     return null;
   });
 
-  /** 에디터 내용을 저장하고 매니저 목록을 갱신한다. */
+  /** 에디터 내용을 저장하고 매니저·캘린더 목록을 갱신한다. */
   ipcMain.on('save-content', (_event, { id, content, contentType }) => {
     const update = { content };
     if (contentType) update.contentType = contentType;
     state.store.update(id, update);
     notifyManager();
+    notifyCalendar();
   });
 
   /** 새 포스트잇을 생성하고 매니저·캘린더 목록을 갱신한다. */
@@ -145,6 +146,7 @@ function registerIpcHandlers() {
     items.push({ type: 'separator' });
     items.push({ label: i18n.t('menu.properties'), click: () => openProperties(id) });
     items.push({ label: i18n.t('menu.allList'),     click: () => openManager() });
+    items.push({ label: i18n.t('menu.calendar'),    click: () => openCalendar() });
     items.push({ type: 'separator' });
     items.push({ label: i18n.t('menu.hide'), click: () => hidePostit(id) });
     items.push({ label: i18n.t('menu.deleteThis'), click: () => confirmAndDelete(id) });

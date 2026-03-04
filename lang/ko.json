@@ -166,5 +166,9 @@
   "calendar.month.8": "9월",
   "calendar.month.9": "10월",
   "calendar.month.10": "11월",
-  "calendar.month.11": "12월"
+  "calendar.month.11": "12월",
+
+  "menu.calendar": "캘린더",
+  "properties.today": "오늘",
+  "save.notification": "저장되었습니다"
 }

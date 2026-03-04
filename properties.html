@@ -210,6 +210,7 @@
   <div class="row">
     <label data-i18n="properties.date">Date</label>
     <input type="date" id="inputDate">
+    <button type="button" id="btnToday" data-i18n="properties.today" style="margin-left:6px; padding:5px 10px; border:1px solid #bbb; border-radius:4px; background:#fff; cursor:pointer; font-family:inherit; font-size:9pt; white-space:nowrap;">Today</button>
   </div>
 
   <div class="row">
@@ -347,6 +348,15 @@
 
     selectHour.addEventListener('change', updateAlarmState);
     selectMin.addEventListener('change', updateAlarmState);
+
+    // ── 오늘 버튼 ───────────────────────────
+    document.getElementById('btnToday').addEventListener('click', () => {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      inputDate.value = `${y}-${m}-${d}`;
+    });
 
     // ── 요일 토글 버튼 ──────────────────────
     document.querySelectorAll('.day-btn').forEach(btn => {

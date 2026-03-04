@@ -413,6 +413,26 @@
     body.read-only #editor code[contenteditable="true"] {
       pointer-events: none;
     }
+
+    /* ── 저장 토스트 ───────────────────────────────────── */
+    #save-toast {
+      position: fixed;
+      bottom: -36px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 14px;
+      font-size: 8.5pt;
+      z-index: 100;
+      pointer-events: none;
+      transition: bottom 0.25s ease;
+      white-space: nowrap;
+    }
+    #save-toast.show {
+      bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -703,6 +723,7 @@
         } else {
           ipcRenderer.send('save-content', { id: postitId, content: editor.innerHTML, contentType: 'html' });
         }
+        showSaveToast();
       }, 400);
     }
 
@@ -1508,6 +1529,33 @@
       e.stopPropagation();
       ipcRenderer.send('delete-postit', { id: postitId });
     });
+
+    // ── 저장 토스트 표시 ───────────────────────────────────
+    const saveToast = document.getElementById('save-toast');
+    let toastTimer = null;
+    function showSaveToast() {
+      saveToast.textContent = t('save.notification');
+      saveToast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { saveToast.classList.remove('show'); }, 1500);
+    }
+
+    // ── Ctrl+S: 강제 저장 + 토스트 ────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        if (isLocked) return;
+        clearTimeout(saveTimer);
+        if (contentType === 'wiki') {
+          ipcRenderer.send('save-content', { id: postitId, content: editorWiki.value, contentType: 'wiki' });
+        } else {
+          ipcRenderer.send('save-content', { id: postitId, content: editor.innerHTML, contentType: 'html' });
+        }
+        showSaveToast();
+      }
+    });
+
   </script>
+  <div id="save-toast"></div>
 </body>
 </html>
