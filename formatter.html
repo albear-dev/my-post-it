@@ -211,6 +211,13 @@
     </div>
   </div>
 
+  <!-- Link URL -->
+  <div class="row">
+    <span class="lbl" data-i18n="formatter.linkUrl">링크</span>
+    <input type="text" id="linkUrl" placeholder="https://" spellcheck="false" style="flex:1; padding:4px 6px; border:1px solid #ccc; border-radius:3px; font-size:13px;">
+    <button type="button" id="linkClear" class="btn-none" data-i18n="formatter.none">없음</button>
+  </div>
+
   <!-- Preview -->
   <div class="preview-wrap">
     <span id="preview" data-i18n="formatter.preview">Preview Text</span>
@@ -249,6 +256,8 @@
     const elColor         = document.getElementById('color');
     const elBgColor       = document.getElementById('bgColor');
     const elBgColorNone   = document.getElementById('bgColorNone');
+    const elLinkUrl       = document.getElementById('linkUrl');
+    const elLinkClear     = document.getElementById('linkClear');
     const preview         = document.getElementById('preview');
 
     let bgColorValue = '';  // '' = 배경 없음, '#xxx' = 배경색
@@ -262,6 +271,7 @@
       strikethrough:  false,
       color:          '#333333',
       bgColor:        '',
+      linkUrl:        '',
     };
 
     function applyToForm(data) {
@@ -273,6 +283,7 @@
       elStrikethrough.checked   = data.strikethrough  ?? DEFAULTS.strikethrough;
       elColor.value             = data.color          ?? DEFAULTS.color;
       bgColorValue              = data.bgColor        ?? DEFAULTS.bgColor;
+      elLinkUrl.value           = data.linkUrl        ?? DEFAULTS.linkUrl;
       if (bgColorValue) elBgColor.value = bgColorValue;
       elBgColor.style.opacity   = bgColorValue ? '1' : '0.4';
       updatePreview();
@@ -330,6 +341,9 @@
       });
     });
 
+    // 링크 초기화
+    elLinkClear.addEventListener('click', () => { elLinkUrl.value = ''; });
+
     // 속성 초기화
     document.getElementById('btnReset').addEventListener('click', () => applyToForm(DEFAULTS));
 
@@ -344,6 +358,7 @@
         strikethrough: elStrikethrough.checked,
         color:         elColor.value,
         bgColor:       bgColorValue,
+        linkUrl:       elLinkUrl.value.trim(),
       });
     });
 

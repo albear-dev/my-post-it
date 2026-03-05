@@ -451,6 +451,7 @@
     #save-toast.show {
       bottom: 10px;
     }
+
   </style>
 </head>
 <body>
@@ -1467,6 +1468,14 @@
         bgColor = rgbToHex(bg);
       }
 
+      // 선택 영역이 링크 안에 있는지 확인
+      let linkUrl = '';
+      let checkEl = el;
+      while (checkEl && checkEl !== editor) {
+        if (checkEl.tagName === 'A' && checkEl.href) { linkUrl = checkEl.href; break; }
+        checkEl = checkEl.parentElement;
+      }
+
       return {
         fontFamily,
         fontSize:      Math.round(parseFloat(s.fontSize) * 0.75), // px → pt (1pt = 1.333px)
@@ -1476,6 +1485,7 @@
         strikethrough: s.textDecoration.includes('line-through'),
         color:         rgbToHex(s.color),
         bgColor,
+        linkUrl,
       };
     }
 
@@ -1498,30 +1508,8 @@
       });
     });
 
-    // ── 링크 추가 ───────────────────────────────────────────
-    ipcRenderer.on('add-link', () => {
-      restoreSelection();
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed) return;
-
-      const text = sel.toString();
-      const url = prompt(t('menu.addLinkPrompt') || 'URL을 입력하세요:', 'https://');
-      if (!url) return;
-
-      const range = sel.getRangeAt(0);
-      range.deleteContents();
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.textContent = text;
-      range.insertNode(a);
-      ensureLinkIcons();
-      sel.removeAllRanges();
-      schedSave();
-    });
-
     // ── 서식 적용 (formatter → main → 여기) ──────────────
-    ipcRenderer.on('apply-formatting', (_e, { fontFamily, fontSize, bold, italic, underline, strikethrough, color, bgColor }) => {
+    ipcRenderer.on('apply-formatting', (_e, { fontFamily, fontSize, bold, italic, underline, strikethrough, color, bgColor, linkUrl }) => {
       restoreSelection(); // 저장해 뒀던 선택 범위 복원
 
       const sel = window.getSelection();
@@ -1529,6 +1517,18 @@
 
       const range    = sel.getRangeAt(0);
       const fragment = range.extractContents(); // 선택된 DOM을 추출
+
+      // 기존 링크 태그 제거 (unwrap)
+      (function unwrapLinks(node) {
+        if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
+          const parent = node.parentNode;
+          while (node.firstChild) parent.insertBefore(node.firstChild, node);
+          parent.removeChild(node);
+          return;
+        }
+        // childNodes를 복사해서 순회 (unwrap 중 변경되므로)
+        Array.from(node.childNodes).forEach(unwrapLinks);
+      })(fragment);
 
       // 중첩된 span에 인라인으로 설정된 서식 제거
       (function clearStyles(node) {
@@ -1558,13 +1558,26 @@
       if (strikethrough) deco.push('line-through');
       span.style.textDecoration = deco.length > 0 ? deco.join(' ') : 'none';
       span.appendChild(fragment);
-      range.insertNode(span);
 
-      // 삽입된 span 내용을 선택 상태로 유지
-      sel.removeAllRanges();
-      const newRange = document.createRange();
-      newRange.selectNodeContents(span);
-      sel.addRange(newRange);
+      // 링크 URL이 있으면 <a> 태그로 감싸기
+      if (linkUrl) {
+        const a = document.createElement('a');
+        a.href = linkUrl;
+        a.target = '_blank';
+        a.appendChild(span);
+        range.insertNode(a);
+        ensureLinkIcons();
+        sel.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.selectNodeContents(a);
+        sel.addRange(newRange);
+      } else {
+        range.insertNode(span);
+        sel.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.selectNodeContents(span);
+        sel.addRange(newRange);
+      }
 
       // 즉시 저장
       ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });

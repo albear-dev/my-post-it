@@ -25,6 +25,7 @@
 
   "dialog.delete": "삭제",
   "dialog.cancel": "취소",
+  "dialog.ok": "확인",
   "dialog.deleteConfirm": "이 포스트잇을 삭제할까요?",
   "dialog.deleteMultiConfirm": "선택한 {count}개 포스트잇을 삭제할까요?",
 
@@ -87,6 +88,7 @@
   "formatter.fontColor": "글자색",
   "formatter.bgColor": "배경색",
   "formatter.none": "없음",
+  "formatter.linkUrl": "링크",
   "formatter.preview": "미리보기 텍스트 (Preview Text)",
   "formatter.reset": "속성 초기화",
   "formatter.cancel": "취소",

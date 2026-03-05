@@ -25,6 +25,7 @@
 
   "dialog.delete": "Delete",
   "dialog.cancel": "Cancel",
+  "dialog.ok": "OK",
   "dialog.deleteConfirm": "Delete this postit?",
   "dialog.deleteMultiConfirm": "Delete {count} selected postits?",
 
@@ -87,6 +88,7 @@
   "formatter.fontColor": "Font Color",
   "formatter.bgColor": "Highlight",
   "formatter.none": "None",
+  "formatter.linkUrl": "Link",
   "formatter.preview": "Preview Text",
   "formatter.reset": "Reset Formatting",
   "formatter.cancel": "Cancel",

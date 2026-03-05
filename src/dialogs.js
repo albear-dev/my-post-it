@@ -33,7 +33,7 @@ function openFormatter(postitWC, formatting) {
 
   const fwin = new BrowserWindow({
     width:       430,
-    height:      340,
+    height:      375,
     resizable:   false,
     minimizable: false,
     maximizable: false,
