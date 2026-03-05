@@ -22,9 +22,19 @@ function openCalendar() {
     return;
   }
 
+  const saved = state.store.getSetting('calendarBounds');
+  const bounds = {
+    width:  (saved && saved.width)  || 680,
+    height: (saved && saved.height) || 620,
+  };
+  if (saved && saved.x != null && saved.y != null) {
+    bounds.x = saved.x;
+    bounds.y = saved.y;
+  }
+
   state.calendarWindow = new BrowserWindow({
-    width: 680, height: 560,
-    minWidth: 520, minHeight: 440,
+    ...bounds,
+    minWidth: 520, minHeight: 560,
     resizable: true, minimizable: true, maximizable: true,
     title: i18n.t('window.calendarTitle'),
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -38,6 +48,20 @@ function openCalendar() {
     sendCalendarData();
   });
 
+  // 위치/크기 변경 시 저장
+  const saveBounds = () => {
+    if (!state.calendarWindow || state.calendarWindow.isDestroyed()) return;
+    const b = state.calendarWindow.getBounds();
+    state.store.setSetting('calendarBounds', { x: b.x, y: b.y, width: b.width, height: b.height });
+  };
+  state.calendarWindow.on('moved',   saveBounds);
+  state.calendarWindow.on('resized', saveBounds);
+  state.calendarWindow.on('close', () => {
+    saveBounds();
+    state.store.setSetting('calendarOpen', false);
+  });
+
+  state.store.setSetting('calendarOpen', true);
   state.calendarWindow.on('closed', () => { state.calendarWindow = null; });
 }
 
@@ -76,6 +100,7 @@ function registerCalendarIpc() {
   const { openProperties } = require('./dialogs');
   const { notifyManager } = require('./manager');
   const { DEFAULT_WIDTH, DEFAULT_HEIGHT } = require('./constants');
+  const { markDirty } = require('./history');
 
   // 더블클릭 엔트리 → 포스트잇 활성화
   ipcMain.on('calendar-activate', (_event, { id }) => {
@@ -119,6 +144,7 @@ function registerCalendarIpc() {
           createPostitWindow(postit);
           notifyManager();
           notifyCalendar();
+          markDirty();
         },
       },
     ]);
@@ -154,6 +180,7 @@ function registerCalendarIpc() {
             state.store.delete(id);
             notifyManager();
             notifyCalendar();
+            markDirty();
           }
         },
       },
@@ -172,6 +199,7 @@ function registerCalendarIpc() {
     }
     notifyManager();
     notifyCalendar();
+    markDirty();
   });
 }
 

@@ -169,6 +169,28 @@
   "calendar.month.11": "12월",
 
   "menu.calendar": "캘린더",
+  "menu.openDataFolder": "데이터 폴더 열기",
+  "menu.history": "히스토리",
+
+  "tray.openDataFolder": "데이터 폴더 열기",
+  "tray.backupInterval": "백업 주기",
+  "tray.backupEvery": "매번",
+  "tray.backup1min": "1분",
+  "tray.backup10min": "10분",
+  "tray.backup30min": "30분",
+
+  "window.historyTitle": "백업 히스토리",
+  "history.date": "날짜",
+  "history.count": "포스트잇 수",
+  "history.size": "크기",
+  "history.preview": "미리보기",
+  "history.restore": "복구",
+  "history.delete": "삭제",
+  "history.empty": "백업이 없습니다.",
+  "history.confirmRestore": "이 백업으로 복구하시겠습니까?\n현재 데이터는 자동 백업됩니다.",
+  "history.restoreComplete": "복구 완료",
+  "history.confirmDelete": "이 백업을 삭제하시겠습니까?",
+
   "properties.today": "오늘",
   "save.notification": "저장되었습니다"
 }

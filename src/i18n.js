@@ -183,6 +183,11 @@ function switchLanguage(locale) {
     state.calendarWindow.webContents.send('set-translations', translations);
   }
 
+  // 히스토리 창에 번역 전송
+  if (state.historyWindow && !state.historyWindow.isDestroyed()) {
+    state.historyWindow.webContents.send('set-translations', translations);
+  }
+
   // 알림 창에 번역 전송
   for (const nwin of state.notificationWindows.values()) {
     if (!nwin.isDestroyed()) {

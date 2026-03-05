@@ -360,6 +360,22 @@ function activatePostit(id) {
   }
 }
 
+/**
+ * 모든 포스트잇 창을 닫고 현재 데이터로 재생성한다.
+ * 백업 복구 후 호출된다.
+ */
+function reloadAllPostits() {
+  // 기존 포스트잇 창 모두 닫기
+  for (const [id, win] of state.windows.entries()) {
+    if (!win.isDestroyed()) win.destroy();
+  }
+  state.windows.clear();
+
+  // 보이는 포스트잇 재생성
+  const postits = state.store.getAll().filter(p => !p.hidden);
+  postits.forEach(p => createPostitWindow(p));
+}
+
 module.exports = {
   generateId,
   calcSnap,
@@ -370,4 +386,5 @@ module.exports = {
   hidePostit,
   unhidePostit,
   activatePostit,
+  reloadAllPostits,
 };

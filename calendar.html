@@ -68,11 +68,12 @@
     #calendar-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      grid-template-rows: repeat(6, 1fr);
+      grid-template-rows: repeat(6, minmax(80px, 1fr));
       flex: 1;
       gap: 1px;
       background: #ddd;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .cal-cell {
@@ -97,12 +98,16 @@
       text-align: center;
     }
 
+    .day-row {
+      display: flex;
+      align-items: baseline;
+      margin-bottom: 1px;
+      flex-shrink: 0;
+    }
     .day-number {
       font-size: 8.5pt;
       font-weight: 600;
       color: #333;
-      margin-bottom: 1px;
-      flex-shrink: 0;
     }
     .cal-cell:nth-child(7n+1) .day-number { color: #e53935; }
     .cal-cell:nth-child(7n)   .day-number { color: #1e88e5; }
@@ -117,8 +122,11 @@
     /* ── 셀 내 포스트잇 엔트리 ────────────────────────── */
     .cal-entries {
       flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .cal-entries.expanded {
       overflow-y: auto;
-      overflow-x: hidden;
     }
     .cal-entries::-webkit-scrollbar { width: 3px; }
     .cal-entries::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
@@ -174,6 +182,19 @@
     }
     .tooltip .tip-title { font-weight: 600; margin-bottom: 2px; }
     .tooltip .tip-time  { color: #aaa; font-size: 7.5pt; }
+
+    /* ── 공휴일 ──────────────────────────────────────── */
+    .holiday-label {
+      font-size: 7pt;
+      color: #e53935;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-left: auto;
+      flex-shrink: 1;
+      min-width: 0;
+    }
+    .day-number.holiday { color: #e53935 !important; }
   </style>
 </head>
 <body>
@@ -221,6 +242,19 @@
   let currentMonth = new Date().getMonth();
 
   const MAX_VISIBLE_ENTRIES = 3;
+
+  // ── 2026 대한민국 공휴일 ──────────────────────────────
+  const HOLIDAYS_2026 = {
+    '2026-01-01': '신정',
+    '2026-02-16': '설날 연휴', '2026-02-17': '설날', '2026-02-18': '설날 연휴',
+    '2026-03-01': '삼일절', '2026-03-02': '대체공휴일',
+    '2026-05-05': '어린이날', '2026-05-24': '부처님오신날', '2026-05-25': '대체공휴일',
+    '2026-06-06': '현충일',
+    '2026-08-15': '광복절', '2026-08-17': '대체공휴일',
+    '2026-09-24': '추석 연휴', '2026-09-25': '추석', '2026-09-26': '추석 연휴',
+    '2026-10-03': '개천절', '2026-10-05': '대체공휴일', '2026-10-09': '한글날',
+    '2026-12-25': '크리스마스',
+  };
 
   // ── DOM 참조 ─────────────────────────────────────────
   const monthLabel   = document.getElementById('monthLabel');
@@ -357,17 +391,37 @@
       // 오늘 강조
       if (dateStr === todayStr) cell.classList.add('today');
 
-      // 날짜 숫자
+      // 날짜 행 (숫자 + 공휴일명)
+      const holidayName = HOLIDAYS_2026[dateStr];
+      const dayRow = document.createElement('div');
+      dayRow.className = 'day-row';
+
       const dayNum = document.createElement('div');
       dayNum.className = 'day-number';
       dayNum.textContent = day;
-      cell.appendChild(dayNum);
+      if (holidayName) dayNum.classList.add('holiday');
+      dayRow.appendChild(dayNum);
+
+      if (holidayName) {
+        const hLabel = document.createElement('span');
+        hLabel.className = 'holiday-label';
+        hLabel.textContent = holidayName;
+        dayRow.appendChild(hLabel);
+      }
+
+      cell.appendChild(dayRow);
 
       // 포스트잇 엔트리
       const entries = getPostitsForDate(dateStr);
       if (entries.length > 0) {
-        // 시간순 정렬
-        entries.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+        // 시간 있는 항목 우선, 그 안에서 시간순 정렬. 시간 없는 항목은 ID순(생성순)
+        entries.sort((a, b) => {
+          const aHasTime = a.time ? 0 : 1;
+          const bHasTime = b.time ? 0 : 1;
+          if (aHasTime !== bHasTime) return aHasTime - bHasTime;
+          if (a.time && b.time) return a.time.localeCompare(b.time);
+          return (a.id || '').localeCompare(b.id || '');
+        });
 
         const entriesDiv = document.createElement('div');
         entriesDiv.className = 'cal-entries';
@@ -388,6 +442,7 @@
             e.stopPropagation();
             // 나머지 엔트리 펼치기
             more.remove();
+            entriesDiv.classList.add('expanded');
             entries.slice(MAX_VISIBLE_ENTRIES).forEach(p => {
               entriesDiv.appendChild(createEntryEl(p, dateStr));
             });

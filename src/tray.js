@@ -5,7 +5,7 @@
  * 우클릭 컨텍스트 메뉴(새 포스트잇, 전체 목록, 전체 보이기, 언어 선택, 종료)를 제공한다.
  */
 
-const { app, Menu, Tray, nativeImage } = require('electron');
+const { app, Menu, Tray, nativeImage, shell } = require('electron');
 const path = require('path');
 
 const state = require('./state');
@@ -21,6 +21,7 @@ function rebuildTrayMenu() {
   const { createNewPostit, unhidePostit } = require('./postitWindow');
   const { openManager, notifyManager } = require('./manager');
   const { openCalendar } = require('./calendar');
+  const { setBackupInterval } = require('./history');
 
   const locales = i18n.getAvailableLocales();
   const currentLocale = i18n.getLocale();
@@ -46,6 +47,24 @@ function rebuildTrayMenu() {
         win.setAlwaysOnTop(false);
       }
     }},
+    { label: i18n.t('tray.openDataFolder'), click: () => {
+      if (state.store && state.store.dbPath) {
+        shell.openPath(path.dirname(state.store.dbPath));
+      }
+    }},
+    { type: 'separator' },
+    (() => {
+      const interval = state.store ? (state.store.getSetting('backupInterval') ?? 60000) : 60000;
+      return {
+        label: i18n.t('tray.backupInterval'),
+        submenu: [
+          { label: i18n.t('tray.backupEvery'),  type: 'radio', checked: interval === 0,       click: () => setBackupInterval(0) },
+          { label: i18n.t('tray.backup1min'),    type: 'radio', checked: interval === 60000,   click: () => setBackupInterval(60000) },
+          { label: i18n.t('tray.backup10min'),   type: 'radio', checked: interval === 600000,  click: () => setBackupInterval(600000) },
+          { label: i18n.t('tray.backup30min'),   type: 'radio', checked: interval === 1800000, click: () => setBackupInterval(1800000) },
+        ],
+      };
+    })(),
     { type: 'separator' },
     { label: i18n.t('tray.language'), submenu: langSubmenu },
     { type: 'separator' },

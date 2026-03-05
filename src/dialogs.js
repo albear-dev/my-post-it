@@ -121,6 +121,7 @@ function openProperties(postitId) {
 function registerDialogIpc() {
   const { notifyManager } = require('./manager');
   const { notifyCalendar } = require('./calendar');
+  const { markDirty } = require('./history');
 
   /** 포매터에서 서식을 적용한다. 대상 포스트잇에 apply-formatting 이벤트 전송. */
   ipcMain.on('formatter-apply', (event, formatting) => {
@@ -155,6 +156,7 @@ function registerDialogIpc() {
       }
       notifyManager();
       notifyCalendar();
+      markDirty();
     }
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
@@ -186,6 +188,7 @@ function registerDialogIpc() {
 
     notifyManager();
     notifyCalendar();
+    markDirty();
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
 

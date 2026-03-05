@@ -25,10 +25,12 @@
     },
     "files": [
       "main.js",
+      "launch.js",
       "index.html",
       "formatter.html",
       "manager.html",
       "calendar.html",
+      "history.html",
       "notification.html",
       "password.html",
       "properties.html",

@@ -169,6 +169,28 @@
   "calendar.month.11": "December",
 
   "menu.calendar": "Calendar",
+  "menu.openDataFolder": "Open Data Folder",
+  "menu.history": "History",
+
+  "tray.openDataFolder": "Open Data Folder",
+  "tray.backupInterval": "Backup Interval",
+  "tray.backupEvery": "Every Save",
+  "tray.backup1min": "1 Minute",
+  "tray.backup10min": "10 Minutes",
+  "tray.backup30min": "30 Minutes",
+
+  "window.historyTitle": "Backup History",
+  "history.date": "Date",
+  "history.count": "Postit Count",
+  "history.size": "Size",
+  "history.preview": "Preview",
+  "history.restore": "Restore",
+  "history.delete": "Delete",
+  "history.empty": "No backups.",
+  "history.confirmRestore": "Restore from this backup?\nCurrent data will be auto-backed up.",
+  "history.restoreComplete": "Restore Complete",
+  "history.confirmDelete": "Delete this backup?",
+
   "properties.today": "Today",
   "save.notification": "Saved"
 }

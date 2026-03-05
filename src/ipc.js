@@ -5,7 +5,8 @@
  * 개별 포스트잇에서 발생하는 기본 IPC 이벤트를 처리한다.
  */
 
-const { BrowserWindow, ipcMain, Menu } = require('electron');
+const { BrowserWindow, ipcMain, Menu, shell } = require('electron');
+const path = require('path');
 
 const state = require('./state');
 const i18n = require('./i18n');
@@ -29,6 +30,8 @@ function registerIpcHandlers() {
   const { openManager, notifyManager } = require('./manager');
   const { notifyCalendar, openCalendar } = require('./calendar');
   const { hidePostit } = require('./postitWindow');
+  const { markDirty, createBackup } = require('./history');
+  const { openHistory } = require('./historyWindow');
 
   /**
    * 포스트잇 데이터를 WebContents ID로 조회하여 반환한다.
@@ -50,6 +53,7 @@ function registerIpcHandlers() {
     state.store.update(id, update);
     notifyManager();
     notifyCalendar();
+    markDirty();
   });
 
   /** 새 포스트잇을 생성하고 매니저·캘린더 목록을 갱신한다. */
@@ -57,10 +61,14 @@ function registerIpcHandlers() {
     createNewPostit();
     notifyManager();
     notifyCalendar();
+    markDirty();
   });
 
   /** 포스트잇 삭제 (확인 다이얼로그 표시). */
-  ipcMain.on('delete-postit', (_event, { id }) => confirmAndDelete(id));
+  ipcMain.on('delete-postit', (_event, { id }) => {
+    confirmAndDelete(id);
+    markDirty();
+  });
 
   /** 접기/펴기 토글. */
   ipcMain.on('toggle-collapse', (_event, { id }) => toggleCollapse(id));
@@ -147,11 +155,22 @@ function registerIpcHandlers() {
     items.push({ label: i18n.t('menu.properties'), click: () => openProperties(id) });
     items.push({ label: i18n.t('menu.allList'),     click: () => openManager() });
     items.push({ label: i18n.t('menu.calendar'),    click: () => openCalendar() });
+    items.push({ label: i18n.t('menu.history'),      click: () => openHistory() });
+    items.push({ label: i18n.t('menu.openDataFolder'), click: () => {
+      if (state.store && state.store.dbPath) {
+        shell.openPath(path.dirname(state.store.dbPath));
+      }
+    }});
     items.push({ type: 'separator' });
     items.push({ label: i18n.t('menu.hide'), click: () => hidePostit(id) });
     items.push({ label: i18n.t('menu.deleteThis'), click: () => confirmAndDelete(id) });
 
     Menu.buildFromTemplate(items).popup({ window: BrowserWindow.fromWebContents(event.sender) });
+  });
+
+  /** 강제 백업 (Ctrl+S) */
+  ipcMain.on('force-backup', () => {
+    createBackup('manual');
   });
 
   /** 잠금 해제 요청 (렌더러에서 더블클릭 시) */

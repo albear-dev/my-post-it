@@ -1552,6 +1552,7 @@
           ipcRenderer.send('save-content', { id: postitId, content: editor.innerHTML, contentType: 'html' });
         }
         showSaveToast();
+        ipcRenderer.send('force-backup');
       }
     });
 

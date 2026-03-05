@@ -27,6 +27,9 @@ module.exports = {
   /** @type {import('electron').BrowserWindow|null} 캘린더 창 (싱글턴) */
   calendarWindow: null,
 
+  /** @type {import('electron').BrowserWindow|null} 히스토리 창 (싱글턴) */
+  historyWindow: null,
+
   /** @type {Map<string, import('electron').BrowserWindow>} postitId → notification BrowserWindow */
   notificationWindows: new Map(),
 

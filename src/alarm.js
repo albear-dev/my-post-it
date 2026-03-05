@@ -171,6 +171,7 @@ function closeNotification(id) {
 function registerAlarmIpc() {
   const { notifyManager } = require('./manager');
   const { notifyCalendar } = require('./calendar');
+  const { markDirty } = require('./history');
 
   /**
    * 30분 연기: 반복 알림(요일/매일)은 dismissedUntil 쿨다운 설정,
@@ -199,6 +200,7 @@ function registerAlarmIpc() {
         }
         notifyManager();
         notifyCalendar();
+        markDirty();
       }
     }
     closeNotification(id);
@@ -214,6 +216,7 @@ function registerAlarmIpc() {
     }
     notifyManager();
     notifyCalendar();
+    markDirty();
     closeNotification(id);
   });
 

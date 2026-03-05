@@ -30,7 +30,9 @@ const { registerDragHandlers } = require('./src/drag');
 const { registerManagerIpc } = require('./src/manager');
 const { registerDialogIpc } = require('./src/dialogs');
 const { registerIpcHandlers } = require('./src/ipc');
-const { registerCalendarIpc } = require('./src/calendar');
+const { registerCalendarIpc, openCalendar } = require('./src/calendar');
+const { initHistory } = require('./src/history');
+const { registerHistoryIpc } = require('./src/historyWindow');
 
 // ─── IPC 핸들러 등록 (app.whenReady 전에 등록해도 안전) ───────────────────────
 registerIpcHandlers();
@@ -39,6 +41,7 @@ registerAlarmIpc();
 registerManagerIpc();
 registerDialogIpc();
 registerCalendarIpc();
+registerHistoryIpc();
 
 // ─── 앱 라이프사이클 ───────────────────────────────────────────────────────────
 
@@ -47,6 +50,7 @@ app.whenReady().then(() => {
   state.store = new PostitStore();
   state.store.init();
   i18n.init(state.store.getSetting('locale') || 'en');
+  initHistory();
   createTray();
 
   // Ctrl+Alt+P → 모든 포스트잇 최상위로 활성화
@@ -84,6 +88,11 @@ app.whenReady().then(() => {
     createNewPostit();
   } else {
     visible.forEach(createPostitWindow);
+  }
+
+  // 이전에 캘린더가 열려있었으면 자동으로 다시 열기
+  if (state.store.getSetting('calendarOpen')) {
+    openCalendar();
   }
 
   // 알림 스케줄러: 30초마다 체크
