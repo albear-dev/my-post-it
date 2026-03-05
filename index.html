@@ -452,6 +452,62 @@
       bottom: 10px;
     }
 
+    /* ── 검색 바 ─────────────────────────────────────────── */
+    #find-bar {
+      display: none;
+      position: fixed;
+      top: 28px;
+      right: 4px;
+      z-index: 150;
+      background: #fff;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      padding: 4px 6px;
+      align-items: center;
+      gap: 4px;
+      font-size: 8.5pt;
+    }
+    #find-bar.show { display: flex; }
+    #find-bar input {
+      width: 120px;
+      padding: 3px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 8.5pt;
+      outline: none;
+      font-family: inherit;
+    }
+    #find-bar input:focus { border-color: #4a8df8; }
+    #find-bar .find-count {
+      color: #888;
+      font-size: 8pt;
+      min-width: 36px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    #find-bar button {
+      padding: 2px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: #f5f5f5;
+      cursor: pointer;
+      font-size: 9pt;
+      line-height: 1;
+    }
+    #find-bar button:hover { background: #e8e8e8; }
+    #find-bar .find-close {
+      border: none;
+      background: none;
+      font-size: 11pt;
+      color: #999;
+      padding: 0 3px;
+      cursor: pointer;
+    }
+    #find-bar .find-close:hover { color: #333; }
+    .find-highlight { background: #ffeb3b; border-radius: 1px; }
+    .find-highlight.current { background: #ff9800; color: #fff; border-radius: 1px; }
+
   </style>
 </head>
 <body>
@@ -476,6 +532,14 @@
   </div>
 
   <div id="save-toast"></div>
+
+  <div id="find-bar">
+    <input type="text" id="find-input" spellcheck="false">
+    <span class="find-count" id="find-count"></span>
+    <button id="find-prev" title="Previous">&#9650;</button>
+    <button id="find-next" title="Next">&#9660;</button>
+    <span class="find-close" id="find-close">&times;</span>
+  </div>
 
   <script>
     const { ipcRenderer, shell } = require('electron');
@@ -510,7 +574,6 @@
     const badgeTime      = document.getElementById('badge-time');
     const titleText      = document.getElementById('title-text');
 
-    let saveTimer   = null;
     let savedRanges = []; // 컨텍스트 메뉴 열기 직전에 저장
 
     // 포스트잇 속성 (날짜/시간/우선순위/편집모드)
@@ -743,17 +806,24 @@
       return clone.innerHTML;
     }
 
+    let isDirty = false;
+
+    /** 변경 발생 시 dirty 플래그만 세운다. 실제 저장은 blur / Ctrl+S 에서 수행. */
     function schedSave() {
       if (isLocked) return;
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        if (contentType === 'wiki') {
-          ipcRenderer.send('save-content', { id: postitId, content: editorWiki.value, contentType: 'wiki' });
-        } else {
-          ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
-        }
-        showSaveToast();
-      }, 400);
+      isDirty = true;
+    }
+
+    /** dirty 상태이면 즉시 저장하고 토스트를 표시한다. */
+    function flushSave() {
+      if (!isDirty) return;
+      isDirty = false;
+      if (contentType === 'wiki') {
+        ipcRenderer.send('save-content', { id: postitId, content: editorWiki.value, contentType: 'wiki' });
+      } else {
+        ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
+      }
+      showSaveToast();
     }
 
     // ── 자동 높이 확장 ────────────────────────────────────
@@ -786,6 +856,13 @@
       schedSave();
       autoResize();
     });
+
+    // blur 시 저장 (에디터 영역을 벗어날 때)
+    editor.addEventListener('blur', flushSave);
+    editorWiki.addEventListener('blur', flushSave);
+
+    // 창이 닫히거나 숨겨질 때도 저장
+    window.addEventListener('beforeunload', flushSave);
 
     // ── Wiki 에디터 이벤트 ───────────────────────────────────
     editorWiki.addEventListener('input', () => {
@@ -1641,16 +1718,201 @@
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
         if (isLocked) return;
-        clearTimeout(saveTimer);
-        if (contentType === 'wiki') {
-          ipcRenderer.send('save-content', { id: postitId, content: editorWiki.value, contentType: 'wiki' });
-        } else {
-          ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
-        }
-        showSaveToast();
+        // Ctrl+S는 dirty 여부와 관계없이 항상 저장
+        isDirty = true;
+        flushSave();
         ipcRenderer.send('force-backup');
       }
     });
+
+    // ── Ctrl+F: 검색 바 ─────────────────────────────────
+    const findBar   = document.getElementById('find-bar');
+    const findInput = document.getElementById('find-input');
+    const findCount = document.getElementById('find-count');
+    const findPrev  = document.getElementById('find-prev');
+    const findNext  = document.getElementById('find-next');
+    const findClose = document.getElementById('find-close');
+
+    let findMatches = [];      // { node, offset } 배열 (원본 텍스트 노드 기준)
+    let findCurrent = -1;
+    let findQuery   = '';
+    let findMarks   = [];      // 현재 삽입된 <mark> 요소들
+
+    function openFindBar() {
+      findBar.classList.add('show');
+      findInput.focus();
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) {
+        findInput.value = sel.toString().trim();
+      }
+      if (findInput.value) {
+        findInput.select();
+        performFind(findInput.value);
+      }
+    }
+
+    function closeFindBar() {
+      findBar.classList.remove('show');
+      clearHighlights();
+      findInput.value = '';
+      findCount.textContent = '';
+      // HTML 모드면 에디터로 포커스 복원
+      if (contentType === 'wiki') editorWiki.focus();
+      else editor.focus();
+    }
+
+    function clearHighlights() {
+      // <mark> 요소들을 텍스트 노드로 되돌리기
+      findMarks.forEach(mark => {
+        const parent = mark.parentNode;
+        if (!parent) return;
+        const text = document.createTextNode(mark.textContent);
+        parent.replaceChild(text, mark);
+        parent.normalize(); // 인접 텍스트 노드 병합
+      });
+      findMarks = [];
+      findMatches = [];
+      findCurrent = -1;
+    }
+
+    function getTextNodes(root) {
+      const nodes = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+      let node;
+      while (node = walker.nextNode()) nodes.push(node);
+      return nodes;
+    }
+
+    function performFind(query) {
+      clearHighlights();
+      findQuery = query;
+      if (!query) {
+        findCount.textContent = '';
+        return;
+      }
+
+      const lowerQuery = query.toLowerCase();
+
+      if (contentType === 'wiki') {
+        // textarea 모드: 직접 하이라이트 불가, 카운트 + 선택으로 처리
+        const text = editorWiki.value.toLowerCase();
+        const positions = [];
+        let idx = 0;
+        while ((idx = text.indexOf(lowerQuery, idx)) !== -1) {
+          positions.push(idx);
+          idx += lowerQuery.length;
+        }
+        findMatches = positions.map(pos => ({ pos, len: query.length }));
+        findCurrent = positions.length > 0 ? 0 : -1;
+        updateFindCount();
+        if (findCurrent >= 0) selectWikiMatch(findCurrent);
+        return;
+      }
+
+      // HTML 모드: 텍스트 노드에서 검색 후 <mark>로 감싸기
+      const textNodes = getTextNodes(editor);
+      const matchInfos = []; // { node, offset, length }
+
+      textNodes.forEach(node => {
+        const text = node.textContent.toLowerCase();
+        let idx = 0;
+        while ((idx = text.indexOf(lowerQuery, idx)) !== -1) {
+          matchInfos.push({ node, offset: idx, length: query.length });
+          idx += lowerQuery.length;
+        }
+      });
+
+      // 뒤에서부터 <mark>로 감싸기 (앞에서 하면 오프셋이 틀어짐)
+      // 같은 노드 내 여러 매치를 역순 처리
+      const byNode = new Map();
+      matchInfos.forEach(m => {
+        if (!byNode.has(m.node)) byNode.set(m.node, []);
+        byNode.get(m.node).push(m);
+      });
+
+      byNode.forEach((matches, node) => {
+        // 역순 정렬
+        matches.sort((a, b) => b.offset - a.offset);
+        matches.forEach(m => {
+          const mark = document.createElement('mark');
+          mark.className = 'find-highlight';
+          const range = document.createRange();
+          range.setStart(node, m.offset);
+          range.setEnd(node, m.offset + m.length);
+          range.surroundContents(mark);
+          findMarks.unshift(mark); // 역순이므로 unshift
+        });
+      });
+
+      findMatches = findMarks; // mark 요소 배열
+      findCurrent = findMarks.length > 0 ? 0 : -1;
+      updateFindCount();
+      if (findCurrent >= 0) scrollToMatch(findCurrent);
+    }
+
+    function updateFindCount() {
+      const total = findMatches.length;
+      if (total === 0) {
+        findCount.textContent = findQuery ? '0/0' : '';
+      } else {
+        findCount.textContent = `${findCurrent + 1}/${total}`;
+      }
+    }
+
+    function scrollToMatch(idx) {
+      // 이전 current 해제
+      findMarks.forEach(m => m.classList.remove('current'));
+      if (idx < 0 || idx >= findMarks.length) return;
+      findMarks[idx].classList.add('current');
+      findMarks[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+
+    function selectWikiMatch(idx) {
+      if (idx < 0 || idx >= findMatches.length) return;
+      const m = findMatches[idx];
+      editorWiki.focus();
+      editorWiki.setSelectionRange(m.pos, m.pos + m.len);
+    }
+
+    function findNextMatch() {
+      if (findMatches.length === 0) return;
+      findCurrent = (findCurrent + 1) % findMatches.length;
+      updateFindCount();
+      if (contentType === 'wiki') selectWikiMatch(findCurrent);
+      else scrollToMatch(findCurrent);
+    }
+
+    function findPrevMatch() {
+      if (findMatches.length === 0) return;
+      findCurrent = (findCurrent - 1 + findMatches.length) % findMatches.length;
+      updateFindCount();
+      if (contentType === 'wiki') selectWikiMatch(findCurrent);
+      else scrollToMatch(findCurrent);
+    }
+
+    // 이벤트 바인딩
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        openFindBar();
+      }
+      if (e.key === 'Escape' && findBar.classList.contains('show')) {
+        e.preventDefault();
+        closeFindBar();
+      }
+    });
+
+    findInput.addEventListener('input', () => performFind(findInput.value));
+    findInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) findPrevMatch();
+        else findNextMatch();
+      }
+    });
+    findNext.addEventListener('click', findNextMatch);
+    findPrev.addEventListener('click', findPrevMatch);
+    findClose.addEventListener('click', closeFindBar);
 
   </script>
 </body>
