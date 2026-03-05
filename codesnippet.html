@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Insert Code Snippet</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 13px;
+      background: #f8f8f8;
+      color: #333;
+      padding: 14px 16px;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .lbl {
+      width: 50px;
+      font-weight: 600;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+
+    select {
+      flex: 1;
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 13px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .code-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-height: 0;
+      margin-bottom: 8px;
+    }
+
+    .code-area label {
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    textarea {
+      flex: 1;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 10pt;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      resize: none;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      tab-size: 4;
+      outline: none;
+    }
+
+    textarea:focus { border-color: #4a8df8; }
+
+    hr { border: none; border-top: 1px solid #ddd; margin: 8px 0; }
+
+    .btns {
+      display: flex;
+      justify-content: flex-end;
+      gap: 7px;
+    }
+
+    button {
+      padding: 5px 14px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      background: #fff;
+      cursor: pointer;
+      font-family: '맑은 고딕', Malgun Gothic, sans-serif;
+      font-size: 13px;
+    }
+
+    button:hover { background: #eee; }
+
+    #btnInsert {
+      background: #ffe066;
+      border-color: #ccaa00;
+      font-weight: 600;
+    }
+
+    #btnInsert:hover { background: #ffd633; }
+  </style>
+</head>
+<body>
+  <!-- Language -->
+  <div class="row">
+    <span class="lbl" data-i18n="codeSnippet.language">언어</span>
+    <select id="language">
+      <option value="javascript">JavaScript</option>
+      <option value="typescript">TypeScript</option>
+      <option value="python">Python</option>
+      <option value="java">Java</option>
+      <option value="c">C / C++</option>
+      <option value="csharp">C#</option>
+      <option value="html">HTML / CSS</option>
+      <option value="sql">SQL</option>
+      <option value="shell">Shell / Bash</option>
+      <option value="go">Go</option>
+      <option value="rust">Rust</option>
+      <option value="json">JSON</option>
+      <option value="xml">XML</option>
+      <option value="plaintext">Plain Text</option>
+    </select>
+  </div>
+
+  <!-- Code Input -->
+  <div class="code-area">
+    <label data-i18n="codeSnippet.code">코드</label>
+    <textarea id="codeInput" spellcheck="false" placeholder="코드를 입력하세요..."></textarea>
+  </div>
+
+  <hr>
+
+  <div class="btns">
+    <button id="btnCancel" data-i18n="codeSnippet.cancel">취소</button>
+    <button id="btnInsert" data-i18n="codeSnippet.insert">삽입</button>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // ── i18n ─────────────────────────────────────────────
+    let _translations = {};
+    function t(key) { return _translations[key] || key; }
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    }
+    ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
+
+    const elLang = document.getElementById('language');
+    const elCode = document.getElementById('codeInput');
+
+    const LANG_LABELS = {
+      javascript: 'JavaScript', typescript: 'TypeScript', python: 'Python',
+      java: 'Java', c: 'C / C++', csharp: 'C#', html: 'HTML / CSS',
+      sql: 'SQL', shell: 'Shell', go: 'Go', rust: 'Rust',
+      json: 'JSON', xml: 'XML', plaintext: 'Plain Text',
+    };
+
+    // Tab 키로 들여쓰기
+    elCode.addEventListener('keydown', e => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = elCode.selectionStart;
+        const end = elCode.selectionEnd;
+        elCode.value = elCode.value.substring(0, start) + '    ' + elCode.value.substring(end);
+        elCode.selectionStart = elCode.selectionEnd = start + 4;
+      }
+    });
+
+    // 삽입
+    document.getElementById('btnInsert').addEventListener('click', () => {
+      const code = elCode.value;
+      if (!code.trim()) return;
+      ipcRenderer.send('codesnippet-apply', {
+        language: elLang.value,
+        languageLabel: LANG_LABELS[elLang.value] || elLang.value,
+        code,
+      });
+    });
+
+    // 취소
+    document.getElementById('btnCancel').addEventListener('click', () => {
+      ipcRenderer.send('codesnippet-cancel');
+    });
+
+    // 단축키
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') ipcRenderer.send('codesnippet-cancel');
+      if (e.key === 'Enter' && e.ctrlKey) document.getElementById('btnInsert').click();
+    });
+  </script>
+</body>
+</html>

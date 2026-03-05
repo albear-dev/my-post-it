@@ -18,6 +18,9 @@ module.exports = {
   /** @type {Map<number, string>} properties webContentsId → postitId */
   propertiesTargets: new Map(),
 
+  /** @type {Map<number, import('electron').WebContents>} codeSnippet webContentsId → postit webContents */
+  codeSnippetTargets: new Map(),
+
   /** @type {import('electron').Tray|null} 시스템 트레이 아이콘 */
   tray: null,
 

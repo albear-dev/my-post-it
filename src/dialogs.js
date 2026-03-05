@@ -59,6 +59,41 @@ function openFormatter(postitWC, formatting) {
   fwin.on('closed', () => state.formatterTargets.delete(fwcId));
 }
 
+// ─── 코드조각 입력 ───────────────────────────────────────────────────────────────
+
+/**
+ * 코드조각 입력 창을 연다.
+ * @param {import('electron').WebContents} postitWC - 대상 포스트잇의 WebContents
+ */
+function openCodeSnippet(postitWC) {
+  for (const [cwcId, pwc] of state.codeSnippetTargets.entries()) {
+    if (pwc.id === postitWC.id) {
+      const existing = BrowserWindow.getAllWindows().find(
+        w => !w.isDestroyed() && w.webContents.id === cwcId
+      );
+      if (existing) { existing.focus(); return; }
+    }
+  }
+
+  const cwin = new BrowserWindow({
+    width: 460, height: 340,
+    resizable: true, minimizable: false, maximizable: false,
+    title: i18n.t('window.codeSnippetTitle'),
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+
+  cwin.setMenuBarVisibility(false);
+  cwin.loadFile(path.join(__dirname, '..', 'codesnippet.html'));
+
+  cwin.webContents.once('did-finish-load', () => {
+    cwin.webContents.send('set-translations', i18n.getAllTranslations());
+  });
+
+  const cwcId = cwin.webContents.id;
+  state.codeSnippetTargets.set(cwcId, postitWC);
+  cwin.on('closed', () => state.codeSnippetTargets.delete(cwcId));
+}
+
 // ─── 속성 편집 ─────────────────────────────────────────────────────────────────
 
 /**
@@ -134,6 +169,20 @@ function registerDialogIpc() {
 
   /** 포매터 취소: 창을 닫는다. */
   ipcMain.on('formatter-cancel', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  /** 코드조각 삽입: 대상 포스트잇에 insert-code-snippet 이벤트 전송. */
+  ipcMain.on('codesnippet-apply', (event, data) => {
+    const postitWC = state.codeSnippetTargets.get(event.sender.id);
+    if (postitWC && !postitWC.isDestroyed()) {
+      postitWC.send('insert-code-snippet', data);
+    }
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  /** 코드조각 취소: 창을 닫는다. */
+  ipcMain.on('codesnippet-cancel', (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
 
@@ -235,4 +284,4 @@ function openPasswordDialog(postitId, mode, action) {
   pwin.on('closed', () => state.passwordDialogTargets.delete(pwcId));
 }
 
-module.exports = { openFormatter, openProperties, openPasswordDialog, registerDialogIpc };
+module.exports = { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, registerDialogIpc };

@@ -18,6 +18,7 @@
   "menu.formatting": "Change Formatting",
   "menu.addLink": "Add Link",
   "menu.addLinkPrompt": "Enter URL:",
+  "menu.insertCode": "Insert Code Snippet",
   "menu.properties": "Postit Properties",
   "menu.allList": "All Notes",
   "menu.hide": "Hide",
@@ -196,5 +197,12 @@
   "history.confirmDelete": "Delete this backup?",
 
   "properties.today": "Today",
-  "save.notification": "Saved"
+  "save.notification": "Saved",
+
+  "window.codeSnippetTitle": "Insert Code Snippet",
+  "codeSnippet.language": "Language",
+  "codeSnippet.code": "Code",
+  "codeSnippet.preview": "Preview",
+  "codeSnippet.insert": "Insert",
+  "codeSnippet.cancel": "Cancel"
 }

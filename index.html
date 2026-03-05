@@ -1453,10 +1453,58 @@
       } else if (e.key === 'Backspace') {
         const sel = window.getSelection();
         if (sel && sel.isCollapsed) {
+          // 코드 블록 바로 뒤에서 Backspace → 코드 블록 삭제
+          let node = sel.anchorNode;
+          const off = sel.anchorOffset;
+          // 빈 div/줄의 맨 앞(offset 0)이면 이전 형제가 code-block인지 확인
+          if (node.nodeType === Node.ELEMENT_NODE && off === 0) {
+            const prev = node.previousElementSibling || (node.parentElement !== editor ? node.parentElement.previousElementSibling : null);
+            if (prev && prev.classList && prev.classList.contains('code-block')) {
+              e.preventDefault();
+              prev.remove();
+              schedSave();
+              return;
+            }
+          }
+          // 텍스트 노드 맨 앞에서 Backspace
+          if (node.nodeType === Node.TEXT_NODE && off === 0) {
+            let block = node.parentElement;
+            while (block && block !== editor && block.parentElement !== editor) block = block.parentElement;
+            if (block && block !== editor) {
+              const prev = block.previousElementSibling;
+              if (prev && prev.classList && prev.classList.contains('code-block')) {
+                e.preventDefault();
+                prev.remove();
+                schedSave();
+                return;
+              }
+            }
+          }
+
           const li = getClosestLi(sel.anchorNode);
           if (li && isCursorAtStartOfLi(li)) {
             e.preventDefault();
             removeListItem(li);
+          }
+        }
+      } else if (e.key === 'Delete') {
+        const sel = window.getSelection();
+        if (sel && sel.isCollapsed) {
+          // 코드 블록 바로 앞에서 Delete → 코드 블록 삭제
+          let node = sel.anchorNode;
+          const off = sel.anchorOffset;
+          let nextBlock = null;
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            nextBlock = node.childNodes[off] || node.nextElementSibling;
+          } else if (node.nodeType === Node.TEXT_NODE && off === node.textContent.length) {
+            let block = node.parentElement;
+            while (block && block !== editor && block.parentElement !== editor) block = block.parentElement;
+            if (block && block !== editor) nextBlock = block.nextElementSibling;
+          }
+          if (nextBlock && nextBlock.classList && nextBlock.classList.contains('code-block')) {
+            e.preventDefault();
+            nextBlock.remove();
+            schedSave();
           }
         }
       }
@@ -1659,6 +1707,57 @@
       }
 
       // 즉시 저장
+      ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
+    });
+
+    // ── 코드조각 삽입 ──────────────────────────────────────
+    ipcRenderer.on('insert-code-snippet', (_e, { language, languageLabel, code }) => {
+      restoreSelection();
+
+      // highlight.js로 구문 강조
+      const hljs = require('highlight.js');
+      let highlighted;
+      if (language && hljs.getLanguage(language)) {
+        highlighted = hljs.highlight(code, { language }).value;
+      } else {
+        highlighted = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      // 라인 번호 생성
+      const lines = highlighted.split('\n');
+      if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+      const lineNums = lines.map((_ln, i) => `<span>${i + 1}</span>`).join('');
+
+      // wikiParser 출력과 동일한 구조로 생성
+      const block = document.createElement('div');
+      block.className = 'code-block';
+      block.contentEditable = 'false';
+      block.innerHTML =
+        `<div class="code-header"><span class="code-lang" title="Click to change language">${language || 'code'}</span><span class="code-copy" title="Copy">📋</span></div>` +
+        `<div class="code-body"><div class="code-lines">${lineNums}</div><pre data-lang="${language}"><code class="hljs language-${language}" contenteditable="true" spellcheck="false">${lines.join('\n')}</code></pre></div>`;
+
+      // 커서 위치에 삽입 + 빈 줄 추가 (이어서 타이핑 가능하도록)
+      const emptyLine = document.createElement('div');
+      emptyLine.innerHTML = '<br>';
+
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(block);
+        block.parentNode.insertBefore(emptyLine, block.nextSibling);
+
+        const newRange = document.createRange();
+        newRange.setStart(emptyLine, 0);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      } else {
+        editor.appendChild(block);
+        editor.appendChild(emptyLine);
+      }
+
+      schedSave();
       ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
     });
 

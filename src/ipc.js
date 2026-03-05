@@ -26,7 +26,7 @@ const i18n = require('./i18n');
  */
 function registerIpcHandlers() {
   const { createNewPostit, confirmAndDelete, toggleCollapse } = require('./postitWindow');
-  const { openFormatter, openProperties, openPasswordDialog } = require('./dialogs');
+  const { openFormatter, openCodeSnippet, openProperties, openPasswordDialog } = require('./dialogs');
   const { openManager, notifyManager } = require('./manager');
   const { notifyCalendar, openCalendar } = require('./calendar');
   const { hidePostit } = require('./postitWindow');
@@ -120,6 +120,14 @@ function registerIpcHandlers() {
         items.push({
           label: i18n.t('menu.formatting'),
           click: () => openFormatter(event.sender, formatting),
+        });
+      }
+
+      // 코드조각 입력 (HTML 모드, 편집 가능 시)
+      if (!readOnly && contentType !== 'wiki') {
+        items.push({
+          label: i18n.t('menu.insertCode'),
+          click: () => openCodeSnippet(event.sender),
         });
       }
     }

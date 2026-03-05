@@ -18,6 +18,7 @@
   "menu.formatting": "속성 변경",
   "menu.addLink": "링크 추가",
   "menu.addLinkPrompt": "URL을 입력하세요:",
+  "menu.insertCode": "코드조각 입력",
   "menu.properties": "포스트잇 속성",
   "menu.allList": "전체 목록",
   "menu.hide": "숨기기",
@@ -196,5 +197,12 @@
   "history.confirmDelete": "이 백업을 삭제하시겠습니까?",
 
   "properties.today": "오늘",
-  "save.notification": "저장되었습니다"
+  "save.notification": "저장되었습니다",
+
+  "window.codeSnippetTitle": "코드조각 입력",
+  "codeSnippet.language": "언어",
+  "codeSnippet.code": "코드",
+  "codeSnippet.preview": "미리보기",
+  "codeSnippet.insert": "삽입",
+  "codeSnippet.cancel": "취소"
 }
