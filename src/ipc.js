@@ -121,6 +121,10 @@ function registerIpcHandlers() {
           label: i18n.t('menu.formatting'),
           click: () => openFormatter(event.sender, formatting),
         });
+        items.push({
+          label: i18n.t('menu.addLink'),
+          click: () => event.sender.send('add-link'),
+        });
       }
     }
 

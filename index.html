@@ -107,6 +107,24 @@
       overflow-wrap: break-word;
     }
 
+    #editor a {
+      color: #1a73e8;
+      text-decoration: underline;
+    }
+    #editor a .link-icon {
+      display: inline-block;
+      font-size: 8pt;
+      margin-left: 2px;
+      cursor: pointer;
+      opacity: 0.6;
+      text-decoration: none;
+      vertical-align: baseline;
+      user-select: none;
+    }
+    #editor a .link-icon:hover {
+      opacity: 1;
+    }
+
     /* placeholder: 에디터가 완전히 비어 있을 때 */
     #editor:empty::before {
       content: var(--placeholder-text, 'Type your note here...');
@@ -457,7 +475,7 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    const { ipcRenderer, shell } = require('electron');
 
     // ── i18n ─────────────────────────────────────────────
     let _translations = {};
@@ -627,6 +645,7 @@
       postitProps.priority = data.priority ?? 3;
       if (data.color) applyColor(data.color);
       updateTitleInfo();
+      ensureLinkIcons();
       if (data.collapsed) {
         document.body.classList.add('collapsed');
         btnFold.textContent = '▴';
@@ -647,7 +666,7 @@
       if (newMode !== contentType) {
         if (newMode === 'wiki') {
           // HTML → Wiki: HTML 내용을 Markdown으로 변환
-          const wikiText = htmlToWiki(editor.innerHTML);
+          const wikiText = htmlToWiki(getCleanHtml());
           editorWiki.value = wikiText;
           switchEditorMode('wiki');
           ipcRenderer.send('save-content', { id: postitId, content: wikiText, contentType: 'wiki' });
@@ -714,6 +733,13 @@
     });
 
     // ── 내용 저장 (디바운스 400ms) ────────────────────────
+    /** 저장용 HTML: .link-icon 제거 후 반환 */
+    function getCleanHtml() {
+      const clone = editor.cloneNode(true);
+      clone.querySelectorAll('.link-icon').forEach(el => el.remove());
+      return clone.innerHTML;
+    }
+
     function schedSave() {
       if (isLocked) return;
       clearTimeout(saveTimer);
@@ -721,7 +747,7 @@
         if (contentType === 'wiki') {
           ipcRenderer.send('save-content', { id: postitId, content: editorWiki.value, contentType: 'wiki' });
         } else {
-          ipcRenderer.send('save-content', { id: postitId, content: editor.innerHTML, contentType: 'html' });
+          ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
         }
         showSaveToast();
       }, 400);
@@ -876,6 +902,39 @@
           }
         }
         schedSave();
+      }
+    });
+
+    // ── 링크 아이콘 삽입: <a> 태그 뒤에 🔗 아이콘 자동 부착 ──
+    function ensureLinkIcons() {
+      editor.querySelectorAll('a[href]').forEach(a => {
+        if (a.querySelector('.link-icon')) return;
+        const icon = document.createElement('span');
+        icon.className = 'link-icon';
+        icon.textContent = '🔗';
+        icon.contentEditable = 'false';
+        a.appendChild(icon);
+      });
+    }
+
+    // 초기 로드 및 내용 변경 시 아이콘 보장
+    const linkIconObserver = new MutationObserver(() => ensureLinkIcons());
+    linkIconObserver.observe(editor, { childList: true, subtree: true });
+
+    // ── 링크 아이콘 클릭 → 외부 브라우저로 열기 ──
+    editor.addEventListener('click', e => {
+      if (e.target.classList.contains('link-icon')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const a = e.target.closest('a[href]');
+        if (a) shell.openExternal(a.href);
+        return;
+      }
+      // Ctrl+클릭 또는 읽기전용에서도 링크 열기
+      const a = e.target.closest('a[href]');
+      if (a && (e.ctrlKey || isReadOnly)) {
+        e.preventDefault();
+        shell.openExternal(a.href);
       }
     });
 
@@ -1439,6 +1498,28 @@
       });
     });
 
+    // ── 링크 추가 ───────────────────────────────────────────
+    ipcRenderer.on('add-link', () => {
+      restoreSelection();
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return;
+
+      const text = sel.toString();
+      const url = prompt(t('menu.addLinkPrompt') || 'URL을 입력하세요:', 'https://');
+      if (!url) return;
+
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.textContent = text;
+      range.insertNode(a);
+      ensureLinkIcons();
+      sel.removeAllRanges();
+      schedSave();
+    });
+
     // ── 서식 적용 (formatter → main → 여기) ──────────────
     ipcRenderer.on('apply-formatting', (_e, { fontFamily, fontSize, bold, italic, underline, strikethrough, color, bgColor }) => {
       restoreSelection(); // 저장해 뒀던 선택 범위 복원
@@ -1486,7 +1567,7 @@
       sel.addRange(newRange);
 
       // 즉시 저장
-      ipcRenderer.send('save-content', { id: postitId, content: editor.innerHTML, contentType: 'html' });
+      ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
     });
 
     // ── 이미지 드래그 리사이즈 ─────────────────────────────
@@ -1549,7 +1630,7 @@
         if (contentType === 'wiki') {
           ipcRenderer.send('save-content', { id: postitId, content: editorWiki.value, contentType: 'wiki' });
         } else {
-          ipcRenderer.send('save-content', { id: postitId, content: editor.innerHTML, contentType: 'html' });
+          ipcRenderer.send('save-content', { id: postitId, content: getCleanHtml(), contentType: 'html' });
         }
         showSaveToast();
         ipcRenderer.send('force-backup');

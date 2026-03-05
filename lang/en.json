@@ -16,6 +16,8 @@
   "menu.copy": "Copy",
   "menu.paste": "Paste",
   "menu.formatting": "Change Formatting",
+  "menu.addLink": "Add Link",
+  "menu.addLinkPrompt": "Enter URL:",
   "menu.properties": "Postit Properties",
   "menu.allList": "All Notes",
   "menu.hide": "Hide",

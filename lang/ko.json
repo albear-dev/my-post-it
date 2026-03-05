@@ -16,6 +16,8 @@
   "menu.copy": "복사",
   "menu.paste": "붙여넣기",
   "menu.formatting": "속성 변경",
+  "menu.addLink": "링크 추가",
+  "menu.addLinkPrompt": "URL을 입력하세요:",
   "menu.properties": "포스트잇 속성",
   "menu.allList": "전체 목록",
   "menu.hide": "숨기기",
