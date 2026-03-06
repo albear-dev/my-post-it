@@ -559,7 +559,7 @@
     }
     ipcRenderer.on('set-translations', (_e, tr) => { _translations = tr; applyTranslations(); });
 
-    const { parseWiki, wikiToPlainText, htmlToWiki } = require('./src/wikiParser');
+    const { parseWiki, wikiToPlainText } = require('./src/wikiParser');
     const hljs = require('highlight.js');
 
     const postitId       = new URLSearchParams(window.location.search).get('id');
@@ -581,10 +581,12 @@
     let contentType = 'html'; // 'html' | 'wiki'
     let isLocked = false;
     let isReadOnly = false;
+    let isPreviewMode = false;  // 미리보기 모드 토글
 
     /** 편집 모드에 따라 에디터를 전환한다. */
     function switchEditorMode(newMode) {
       contentType = newMode;
+      isPreviewMode = false;
       if (newMode === 'wiki') {
         editor.style.display = 'none';
         editorWiki.style.display = 'block';
@@ -593,6 +595,38 @@
         editor.style.display = 'block';
         editorWiki.style.display = 'none';
       }
+    }
+
+    /** 미리보기 모드를 토글한다. */
+    function togglePreview() {
+      if (isLocked) return;
+      isPreviewMode = !isPreviewMode;
+
+      if (contentType === 'wiki') {
+        // 마크다운 → 렌더링 미리보기 (에디터 영역에 읽기전용 HTML 표시)
+        if (isPreviewMode) {
+          const htmlContent = parseWiki(editorWiki.value);
+          editor.innerHTML = htmlContent;
+          editor.removeAttribute('contenteditable');
+          editor.style.display = 'block';
+          editorWiki.style.display = 'none';
+        } else {
+          editor.style.display = 'none';
+          editorWiki.style.display = 'block';
+        }
+      } else {
+        // HTML 에디터 → HTML 소스 보기 (textarea에 읽기전용 HTML 소스 표시)
+        if (isPreviewMode) {
+          editorWiki.value = getCleanHtml();
+          editorWiki.setAttribute('readonly', 'true');
+          editorWiki.style.display = 'block';
+          editor.style.display = 'none';
+        } else {
+          editorWiki.style.display = 'none';
+          editor.style.display = 'block';
+        }
+      }
+      updateTitleInfo();
     }
 
     // ── 색상 유틸: hex → HSL → 밝기 낮춰서 hex ──────────
@@ -658,8 +692,12 @@
 
     // ── 타이틀 바 갱신 ──────────────────────────────────
     function updateTitleInfo() {
-      // 모드 표시 (E / M)
-      badgeMode.textContent = contentType === 'wiki' ? t('mode.wiki') : t('mode.editor');
+      // 모드 표시
+      if (isPreviewMode) {
+        badgeMode.textContent = contentType === 'wiki' ? t('mode.preview') : t('mode.htmlSource');
+      } else {
+        badgeMode.textContent = contentType === 'wiki' ? t('mode.wiki') : t('mode.editor');
+      }
 
       const p = postitProps.priority ?? 3;
       badgePriority.textContent = `[${t(`priority.${p}.short`)}]`;
@@ -726,43 +764,12 @@
       postitProps.time     = props.time     || '';
       postitProps.priority = props.priority ?? 3;
       if (props.color) applyColor(props.color);
-
-      // 편집 모드 변경 처리
-      const newMode = props.contentType || 'html';
-      if (newMode !== contentType) {
-        if (newMode === 'wiki') {
-          // HTML → Wiki: HTML 내용을 Markdown으로 변환
-          const wikiText = htmlToWiki(getCleanHtml());
-          editorWiki.value = wikiText;
-          switchEditorMode('wiki');
-          ipcRenderer.send('save-content', { id: postitId, content: wikiText, contentType: 'wiki' });
-        } else {
-          // Wiki → HTML: Markdown을 HTML로 변환
-          const htmlContent = parseWiki(editorWiki.value);
-          editor.innerHTML = htmlContent;
-          switchEditorMode('html');
-          ipcRenderer.send('save-content', { id: postitId, content: htmlContent, contentType: 'html' });
-        }
-      }
-
       updateTitleInfo();
     });
 
-    // ── Ctrl+Alt+M: 편집 모드 전환 (main → 여기) ─────────
-    ipcRenderer.on('toggle-content-type', (_e, newMode) => {
-      if (newMode === contentType) return;
-      if (newMode === 'wiki') {
-        const wikiText = htmlToWiki(editor.innerHTML);
-        editorWiki.value = wikiText;
-        switchEditorMode('wiki');
-        ipcRenderer.send('save-content', { id: postitId, content: wikiText, contentType: 'wiki' });
-      } else {
-        const htmlContent = parseWiki(editorWiki.value);
-        editor.innerHTML = htmlContent;
-        switchEditorMode('html');
-        ipcRenderer.send('save-content', { id: postitId, content: htmlContent, contentType: 'html' });
-      }
-      updateTitleInfo();
+    // ── Ctrl+Alt+M: 미리보기 모드 토글 (main → 여기) ─────────
+    ipcRenderer.on('toggle-preview', () => {
+      togglePreview();
     });
 
     // ── 잠금/읽기전용 상태 적용 ────────────────────────────
@@ -810,7 +817,7 @@
 
     /** 변경 발생 시 dirty 플래그만 세운다. 실제 저장은 blur / Ctrl+S 에서 수행. */
     function schedSave() {
-      if (isLocked) return;
+      if (isLocked || isPreviewMode) return;
       isDirty = true;
     }
 

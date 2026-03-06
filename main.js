@@ -64,19 +64,16 @@ app.whenReady().then(() => {
     }
   });
 
-  // Ctrl+Alt+M → 활성 포스트잇의 편집 모드 전환 (HTML ↔ Markdown)
+  // Ctrl+Alt+M → 활성 포스트잇의 미리보기 모드 토글
   globalShortcut.register('Ctrl+Alt+M', () => {
     const { BrowserWindow } = require('electron');
     const focused = BrowserWindow.getFocusedWindow();
     if (!focused || focused.isDestroyed()) return;
-    // 포스트잇 창인지 확인
     for (const [id, win] of state.windows.entries()) {
       if (win === focused) {
         const postit = state.store.get(id);
         if (!postit || postit.locked) return;
-        const newMode = (postit.contentType || 'html') === 'html' ? 'wiki' : 'html';
-        state.store.update(id, { contentType: newMode });
-        win.webContents.send('toggle-content-type', newMode);
+        win.webContents.send('toggle-preview');
         return;
       }
     }

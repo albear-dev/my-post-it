@@ -185,25 +185,6 @@
     }
     #btnReset:hover { background: #fee; color: #c33; border-color: #c33; }
 
-    /* 라디오 버튼 */
-    .radio-wrap {
-      display: flex;
-      gap: 14px;
-      flex: 1;
-    }
-    .radio-label {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-      font-weight: normal;
-      width: auto;
-    }
-    .radio-label input[type="radio"] {
-      flex: none;
-      margin: 0;
-    }
-
     /* 태그 셀렉트 박스 */
     .category-wrap {
       flex: 1;
@@ -344,16 +325,7 @@
 
   <div class="row">
     <label data-i18n="properties.editMode">Edit Mode</label>
-    <div class="radio-wrap">
-      <label class="radio-label">
-        <input type="radio" name="editMode" value="html" checked>
-        <span data-i18n="properties.modeHtml">HTML (WYSIWYG)</span>
-      </label>
-      <label class="radio-label">
-        <input type="radio" name="editMode" value="wiki">
-        <span data-i18n="properties.modeWiki">Wiki (Markdown)</span>
-      </label>
-    </div>
+    <span id="editModeDisplay" style="color:#555; font-weight:600;"></span>
   </div>
 
   <hr>
@@ -397,6 +369,7 @@
     let selectedDays  = [];  // 반복 요일 (0=일, 1=월, ..., 6=토)
     let allCategories = [];  // 전체 태그 정의
     let selectedCategories = [];  // 선택된 태그 이름
+    let currentContentType = 'html';  // 변경 불가, 표시만
 
     const DEFAULTS = { date: '', time: '', priority: 3, alarm: false, color: '#ffff99', alarmDays: [], contentType: 'html', categories: [] };
     const categoryWrap = document.getElementById('categoryWrap');
@@ -482,10 +455,10 @@
         btn.classList.toggle('selected', selectedDays.includes(day));
       });
 
-      // 편집 모드
-      const mode = data.contentType || 'html';
-      const radio = document.querySelector(`input[name="editMode"][value="${mode}"]`);
-      if (radio) radio.checked = true;
+      // 편집 모드 (읽기전용 표시)
+      currentContentType = data.contentType || 'html';
+      const modeDisplay = document.getElementById('editModeDisplay');
+      modeDisplay.textContent = currentContentType === 'wiki' ? t('properties.modeWiki') : t('properties.modeHtml');
 
       // 태그
       if (data.allCategories) allCategories = data.allCategories;
@@ -579,7 +552,7 @@
         alarm:       checkAlarm.checked,
         alarmDays:   selectedDays.slice().sort(),
         color:       selectedColor,
-        contentType: document.querySelector('input[name="editMode"]:checked').value,
+        contentType: currentContentType,
         categories:  selectedCategories.slice(),
       };
     }

@@ -133,6 +133,8 @@
 
   "mode.wiki": "Markdown",
   "mode.editor": "Editor",
+  "mode.preview": "Preview",
+  "mode.htmlSource": "HTML Source",
 
   "menu.lock": "Lock",
   "menu.unlock": "Unlock",

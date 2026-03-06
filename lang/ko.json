@@ -133,6 +133,8 @@
 
   "mode.wiki": "마크다운",
   "mode.editor": "에디터",
+  "mode.preview": "미리보기",
+  "mode.htmlSource": "HTML 소스",
 
   "menu.lock": "잠그기",
   "menu.unlock": "잠금 해제",
