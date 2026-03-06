@@ -116,7 +116,7 @@ function openProperties(postitId) {
   if (!postit) return;
 
   const pwin = new BrowserWindow({
-    width: 350, height: 380,
+    width: 350, height: 440,
     resizable: false, minimizable: false, maximizable: false,
     title: i18n.t('window.propertiesTitle'),
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -135,6 +135,8 @@ function openProperties(postitId) {
       alarmDays:   postit.alarmDays   || [],
       color:       postit.color       || '#ffff99',
       contentType: postit.contentType || 'html',
+      categories:  postit.categories  || [],
+      allCategories: state.store.getCategories(),
     });
   });
 
@@ -198,6 +200,7 @@ function registerDialogIpc() {
         alarm: props.alarm ?? false, alarmDays: props.alarmDays || [],
         color: props.color || '#ffff99',
         contentType: props.contentType || 'html',
+        categories: props.categories || [],
       });
       const win = state.windows.get(postitId);
       if (win && !win.isDestroyed()) {
@@ -245,6 +248,61 @@ function registerDialogIpc() {
   ipcMain.on('password-cancel', (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
+
+  /** 내보내기/불러오기 비밀번호: 확인 */
+  ipcMain.on('export-import-password-submit', async (event, { password }) => {
+    const { dialog } = require('electron');
+    const target = state.exportImportTarget;
+    if (!target) return;
+
+    BrowserWindow.fromWebContents(event.sender)?.close();
+
+    const { exportData, importData } = require('./history');
+    const i18n = require('./i18n');
+
+    if (target.mode === 'export') {
+      // 저장 위치 선택
+      const result = await dialog.showSaveDialog({
+        title: i18n.t('dialog.exportTitle'),
+        defaultPath: 'MyPostit_export.zip',
+        filters: [{ name: 'ZIP', extensions: ['zip'] }],
+      });
+      if (result.canceled || !result.filePath) return;
+
+      const ok = await exportData(result.filePath, password);
+      dialog.showMessageBox({
+        type: ok ? 'info' : 'error',
+        message: i18n.t(ok ? 'dialog.exportSuccess' : 'dialog.exportError'),
+      });
+    } else if (target.mode === 'import') {
+      const ok = await importData(target.filePath, password);
+      dialog.showMessageBox({
+        type: ok ? 'info' : 'error',
+        message: i18n.t(ok ? 'dialog.importSuccess' : 'dialog.wrongPassword'),
+      });
+    }
+
+    state.exportImportTarget = null;
+  });
+
+  /** 내보내기/불러오기 비밀번호: 취소 */
+  ipcMain.on('export-import-password-cancel', (event) => {
+    state.exportImportTarget = null;
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  /** 태그 설정 저장 */
+  ipcMain.on('category-settings-save', (event, categories) => {
+    state.store.setCategories(categories);
+    notifyManager();
+    markDirty();
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  /** 태그 설정 취소 */
+  ipcMain.on('category-settings-cancel', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
 }
 
 // ─── 비밀번호 다이얼로그 ─────────────────────────────────────────────────────
@@ -284,4 +342,68 @@ function openPasswordDialog(postitId, mode, action) {
   pwin.on('closed', () => state.passwordDialogTargets.delete(pwcId));
 }
 
-module.exports = { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, registerDialogIpc };
+// ─── 내보내기/불러오기 비밀번호 다이얼로그 ───────────────────────────────────
+
+/**
+ * 내보내기/불러오기용 비밀번호 입력 다이얼로그를 연다.
+ *
+ * @param {'export'|'import'} mode - export: 비밀번호 설정 (2필드), import: 비밀번호 확인 (1필드)
+ */
+function openExportPasswordDialog(mode) {
+  const pwin = new BrowserWindow({
+    width: 300,
+    height: mode === 'export' ? 240 : 180,
+    resizable: false, minimizable: false, maximizable: false,
+    title: i18n.t(mode === 'export' ? 'dialog.exportTitle' : 'dialog.importTitle'),
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+
+  pwin.setMenuBarVisibility(false);
+  pwin.loadFile(path.join(__dirname, '..', 'exportpassword.html'));
+
+  pwin.webContents.once('did-finish-load', () => {
+    pwin.webContents.send('set-translations', i18n.getAllTranslations());
+    pwin.webContents.send('init-export-password', { mode });
+  });
+
+  const pwcId = pwin.webContents.id;
+  state.exportImportTarget = { ...(state.exportImportTarget || {}), pwcId };
+  pwin.on('closed', () => {
+    if (state.exportImportTarget && state.exportImportTarget.pwcId === pwcId) {
+      state.exportImportTarget = null;
+    }
+  });
+}
+
+// ─── 태그 설정 ────────────────────────────────────────────────────────────
+
+/**
+ * 태그 설정 창을 연다 (싱글턴).
+ */
+function openCategorySettings() {
+  if (state.categorySettingsWindow && !state.categorySettingsWindow.isDestroyed()) {
+    state.categorySettingsWindow.focus();
+    return;
+  }
+
+  const cwin = new BrowserWindow({
+    width: 520, height: 500,
+    minWidth: 400, minHeight: 380,
+    resizable: true, minimizable: false, maximizable: false,
+    title: i18n.t('window.categorySettingsTitle'),
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+
+  cwin.setMenuBarVisibility(false);
+  cwin.loadFile(path.join(__dirname, '..', 'categorysettings.html'));
+
+  cwin.webContents.once('did-finish-load', () => {
+    cwin.webContents.send('set-translations', i18n.getAllTranslations());
+    cwin.webContents.send('init-categories', state.store.getCategories());
+  });
+
+  state.categorySettingsWindow = cwin;
+  cwin.on('closed', () => { state.categorySettingsWindow = null; });
+}
+
+module.exports = { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, openExportPasswordDialog, openCategorySettings, registerDialogIpc };

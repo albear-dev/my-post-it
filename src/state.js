@@ -53,4 +53,10 @@ module.exports = {
 
   /** @type {Map<string, {ox: number, oy: number}>} 드래그 시작 시 커서↔창 오프셋 */
   dragOffset: new Map(),
+
+  /** @type {{ mode: string, filePath?: string }|null} 내보내기/불러오기 진행 정보 */
+  exportImportTarget: null,
+
+  /** @type {import('electron').BrowserWindow|null} 태그 설정 창 (싱글턴) */
+  categorySettingsWindow: null,
 };

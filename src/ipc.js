@@ -26,7 +26,7 @@ const i18n = require('./i18n');
  */
 function registerIpcHandlers() {
   const { createNewPostit, confirmAndDelete, toggleCollapse } = require('./postitWindow');
-  const { openFormatter, openCodeSnippet, openProperties, openPasswordDialog } = require('./dialogs');
+  const { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, openCategorySettings } = require('./dialogs');
   const { openManager, notifyManager } = require('./manager');
   const { notifyCalendar, openCalendar } = require('./calendar');
   const { hidePostit } = require('./postitWindow');
@@ -164,6 +164,7 @@ function registerIpcHandlers() {
     items.push({ label: i18n.t('menu.allList'),     click: () => openManager() });
     items.push({ label: i18n.t('menu.calendar'),    click: () => openCalendar() });
     items.push({ label: i18n.t('menu.history'),      click: () => openHistory() });
+    items.push({ label: i18n.t('menu.categorySettings'), click: () => openCategorySettings() });
     items.push({ label: i18n.t('menu.openDataFolder'), click: () => {
       if (state.store && state.store.dbPath) {
         shell.openPath(path.dirname(state.store.dbPath));

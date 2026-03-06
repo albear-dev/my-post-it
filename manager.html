@@ -126,12 +126,13 @@
     #postit-table tbody tr.hidden-row { opacity: 0.55; }
 
     .col-check    { width: 32px; text-align: center; }
-    .col-priority { width: 100px; }
-    .col-date     { width: 130px; }
-    .col-time     { width: 56px; }
+    .col-priority { width: 80px; }
+    .col-date     { width: 120px; }
+    .col-time     { width: 50px; }
     .col-title    { }
-    .col-alarm    { width: 72px; text-align: center; }
-    .col-hidden   { width: 50px; text-align: center; }
+    .col-category { width: 140px; }
+    .col-alarm    { width: 60px; text-align: center; }
+    .col-hidden   { width: 44px; text-align: center; }
 
     /* 우선순위별 왼쪽 색상 바 */
     tr.priority-1 td:first-child { box-shadow: inset 3px 0 0 #e53935; }
@@ -146,6 +147,31 @@
       padding: 40px;
       color: #999;
       font-size: 10pt;
+    }
+
+    /* ── 태그 ────────────────────────────────── */
+    .cat-tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      margin: 1px 2px;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    #catFilter {
+      padding: 4px 6px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 9pt;
+      max-width: 140px;
+    }
+    #catFilter:focus {
+      outline: none;
+      border-color: #5c9eff;
+      box-shadow: 0 0 3px rgba(92,158,255,0.4);
     }
 
     /* ── 스크롤바 커스텀 ──────────────────── */
@@ -166,6 +192,8 @@
     <div class="toolbar-sep"></div>
     <button id="btnShowAll" data-i18n="manager.showAll">Show All</button>
     <button id="btnHideAll" data-i18n="manager.hideAll">Hide All</button>
+    <div class="toolbar-sep"></div>
+    <select id="catFilter"></select>
     <div class="toolbar-spacer"></div>
     <input type="text" id="searchInput" data-i18n-placeholder="manager.search" placeholder="Search...">
   </div>
@@ -185,6 +213,7 @@
           <th class="col-date sortable" data-sort="date" data-i18n="manager.colDate">Date</th>
           <th class="col-time sortable" data-sort="time" data-i18n="manager.colTime">Time</th>
           <th class="col-title sortable" data-sort="title" data-i18n="manager.colTitle">Title</th>
+          <th class="col-category" data-i18n="manager.colCategory">Category</th>
           <th class="col-alarm sortable" data-sort="alarm" data-i18n="manager.colAlarm">Alarm</th>
           <th class="col-hidden sortable" data-sort="hidden" data-i18n="manager.colHidden">Hidden</th>
         </tr>
@@ -214,9 +243,11 @@
 
     // ── State ──────────────────────────────
     let allPostits    = [];
+    let allCategories = [];
     let sortKey       = 'priority';
     let sortDir       = 'asc';
     let searchKeyword = '';
+    let catFilterValue = '__all__';
 
     const PRIORITY_COLORS = {
       1: '#e53935', 2: '#f9a825', 3: '#1e88e5',
@@ -234,8 +265,18 @@
     const countTotal  = document.getElementById('countTotal');
     const countVisible= document.getElementById('countVisible');
     const countHidden = document.getElementById('countHidden');
+    const catFilter   = document.getElementById('catFilter');
 
     // ── Utility ────────────────────────────
+    function contrastText(hex) {
+      const c = hex.replace('#', '');
+      const r = parseInt(c.substr(0, 2), 16);
+      const g = parseInt(c.substr(2, 2), 16);
+      const b = parseInt(c.substr(4, 2), 16);
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return lum > 0.55 ? '#222' : '#fff';
+    }
+
     function stripHtml(html) {
       const div = document.createElement('div');
       div.innerHTML = html;
@@ -279,13 +320,31 @@
 
     // ── Filter ─────────────────────────────
     function getFilteredPostits() {
-      if (!searchKeyword) return allPostits;
-      const kw = searchKeyword.toLowerCase();
-      return allPostits.filter(p => {
-        if (p.locked) return false;
-        const text = p.contentType === 'wiki' ? p.content : stripHtml(p.content);
-        return text.toLowerCase().includes(kw);
-      });
+      let list = allPostits;
+
+      // 태그 필터
+      if (catFilterValue === '__none__') {
+        list = list.filter(p => !p.categories || p.categories.length === 0);
+      } else if (catFilterValue !== '__all__') {
+        if (catFilterValue.startsWith('group:')) {
+          const group = catFilterValue.slice(6);
+          list = list.filter(p => (p.categories || []).some(c => c.startsWith(group + ':')));
+        } else {
+          list = list.filter(p => (p.categories || []).includes(catFilterValue));
+        }
+      }
+
+      // 검색 필터
+      if (searchKeyword) {
+        const kw = searchKeyword.toLowerCase();
+        list = list.filter(p => {
+          if (p.locked) return false;
+          const text = p.contentType === 'wiki' ? p.content : stripHtml(p.content);
+          return text.toLowerCase().includes(kw);
+        });
+      }
+
+      return list;
     }
 
     // ── Sort ───────────────────────────────
@@ -385,6 +444,23 @@
         tdTitle.style.whiteSpace = 'nowrap';
         tdTitle.style.maxWidth = '0';
         tr.appendChild(tdTitle);
+
+        // 태그
+        const tdCat = document.createElement('td');
+        tdCat.className = 'col-category';
+        (p.categories || []).forEach(catName => {
+          const catDef = allCategories.find(c => c.name === catName);
+          const bg = catDef ? catDef.color : '#999';
+          const span = document.createElement('span');
+          span.className = 'cat-tag';
+          span.style.background = bg;
+          span.style.color = contrastText(bg);
+          const parts = catName.split(':');
+          span.textContent = parts.length > 1 ? parts[parts.length - 1] : catName;
+          span.title = catName;
+          tdCat.appendChild(span);
+        });
+        tr.appendChild(tdCat);
 
         // 알림
         const tdAlarm = document.createElement('td');
@@ -497,15 +573,90 @@
       if (ids.length > 0) ipcRenderer.send('manager-delete', { ids });
     });
     document.getElementById('btnShowAll').addEventListener('click', () => {
-      ipcRenderer.send('manager-show-all');
+      if (catFilterValue !== '__all__') {
+        const ids = getFilteredPostits().filter(p => p.hidden).map(p => p.id);
+        if (ids.length > 0) ipcRenderer.send('manager-show-filtered', { ids });
+      } else {
+        ipcRenderer.send('manager-show-all');
+      }
     });
     document.getElementById('btnHideAll').addEventListener('click', () => {
-      ipcRenderer.send('manager-hide-all');
+      if (catFilterValue !== '__all__') {
+        const ids = getFilteredPostits().filter(p => !p.hidden).map(p => p.id);
+        if (ids.length > 0) ipcRenderer.send('manager-hide-filtered', { ids });
+      } else {
+        ipcRenderer.send('manager-hide-all');
+      }
+    });
+
+    // ── 태그 필터 드롭다운 ──────────────────
+    function buildCatFilter() {
+      const prev = catFilterValue;
+      catFilter.innerHTML = '';
+
+      // 전체 / 미지정
+      const optAll = document.createElement('option');
+      optAll.value = '__all__'; optAll.textContent = t('manager.catAll');
+      catFilter.appendChild(optAll);
+
+      const optNone = document.createElement('option');
+      optNone.value = '__none__'; optNone.textContent = t('manager.catNone');
+      catFilter.appendChild(optNone);
+
+      // 그룹별 분류
+      const groups = {};
+      allCategories.forEach(cat => {
+        const parts = cat.name.split(':');
+        const group = parts.length > 1 ? parts[0] : '';
+        if (!groups[group]) groups[group] = [];
+        groups[group].push(cat);
+      });
+
+      Object.keys(groups).sort().forEach(group => {
+        if (group) {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = group;
+
+          // 그룹 전체 옵션
+          const grpOpt = document.createElement('option');
+          grpOpt.value = 'group:' + group;
+          grpOpt.textContent = group + ' (' + t('manager.catAll') + ')';
+          optgroup.appendChild(grpOpt);
+
+          groups[group].forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.name;
+            const sub = cat.name.split(':').slice(1).join(':');
+            opt.textContent = sub;
+            optgroup.appendChild(opt);
+          });
+          catFilter.appendChild(optgroup);
+        } else {
+          // 그룹 없는 태그
+          groups[group].forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.name;
+            opt.textContent = cat.name;
+            catFilter.appendChild(opt);
+          });
+        }
+      });
+
+      catFilter.value = prev;
+      if (!catFilter.value) catFilter.value = '__all__';
+      catFilterValue = catFilter.value;
+    }
+
+    catFilter.addEventListener('change', () => {
+      catFilterValue = catFilter.value;
+      renderTable();
     });
 
     // ── IPC ────────────────────────────────
-    ipcRenderer.on('manager-init', (_e, postits) => {
+    ipcRenderer.on('manager-init', (_e, postits, categories) => {
       allPostits = postits;
+      allCategories = categories || [];
+      buildCatFilter();
       renderTable();
     });
 

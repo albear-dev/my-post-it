@@ -60,8 +60,10 @@ function sendManagerData() {
     color:       p.color || '#ffff99',
     contentType: p.contentType || 'html',
     locked:      p.locked || false,
+    categories:  p.categories || [],
   }));
-  state.managerWindow.webContents.send('manager-init', allPostits);
+  const categories = state.store.getCategories();
+  state.managerWindow.webContents.send('manager-init', allPostits, categories);
 }
 
 /**
@@ -159,6 +161,20 @@ function registerManagerIpc() {
     state.store.getAll().forEach(p => {
       if (!p.hidden) hidePostit(p.id);
     });
+    notifyCalendar();
+    markDirty();
+  });
+
+  /** 필터된 포스트잇만 보이기 */
+  ipcMain.on('manager-show-filtered', (_event, { ids }) => {
+    ids.forEach(id => unhidePostit(id));
+    notifyCalendar();
+    markDirty();
+  });
+
+  /** 필터된 포스트잇만 숨기기 */
+  ipcMain.on('manager-hide-filtered', (_event, { ids }) => {
+    ids.forEach(id => hidePostit(id));
     notifyCalendar();
     markDirty();
   });

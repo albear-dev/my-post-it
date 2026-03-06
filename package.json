@@ -38,8 +38,9 @@
       "src/**/*",
       "lang/**/*",
       "img/**/*",
-      "node_modules/marked/**/*",
-      "node_modules/highlight.js/**/*"
+      "exportpassword.html",
+      "categorysettings.html",
+      "node_modules/**/*"
     ],
     "win": {
       "icon": "img/postit.png",
@@ -47,7 +48,9 @@
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -60,7 +63,10 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
+    "archiver": "^7.0.1",
+    "archiver-zip-encrypted": "^2.0.0",
     "highlight.js": "^11.11.1",
-    "marked": "^12.0.2"
+    "marked": "^12.0.2",
+    "unzipper": "^0.12.3"
   }
 }

@@ -102,6 +102,18 @@ class PostitStore {
     this.data.settings[key] = val;
     this._save();
   }
+
+  /** 태그 목록을 반환한다. @returns {{ name: string, color: string }[]} */
+  getCategories() {
+    return (this.data.settings && this.data.settings.categories) || [];
+  }
+
+  /** 태그 목록을 저장한다. @param {{ name: string, color: string }[]} list */
+  setCategories(list) {
+    if (!this.data.settings) this.data.settings = {};
+    this.data.settings.categories = list;
+    this._save();
+  }
 }
 
 module.exports = PostitStore;

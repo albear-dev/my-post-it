@@ -203,6 +203,59 @@
       flex: none;
       margin: 0;
     }
+
+    /* 태그 셀렉트 박스 */
+    .category-wrap {
+      flex: 1;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      background: #fff;
+      max-height: 120px;
+      overflow-y: auto;
+      padding: 2px 0;
+    }
+    .category-wrap::-webkit-scrollbar { width: 6px; }
+    .category-wrap::-webkit-scrollbar-track { background: transparent; }
+    .category-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+
+    .cat-group-header {
+      padding: 4px 8px 2px;
+      font-size: 8pt;
+      font-weight: 700;
+      color: #666;
+      background: #f8f8f8;
+      border-bottom: 1px solid #eee;
+      user-select: none;
+    }
+    .cat-check-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px 3px 20px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .cat-check-label:hover { background: #f0f4ff; }
+    .cat-check-label.no-group {
+      padding-left: 8px;
+    }
+    .cat-check-label input[type="checkbox"] {
+      flex: none;
+      width: 13px; height: 13px;
+    }
+    .cat-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 600;
+    }
+    .cat-empty {
+      color: #999;
+      font-size: 8.5pt;
+      padding: 8px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -303,6 +356,13 @@
     </div>
   </div>
 
+  <hr>
+
+  <div class="row" style="align-items:flex-start;">
+    <label data-i18n="properties.categories" style="padding-top:2px;">Categories</label>
+    <div id="categoryWrap" class="category-wrap"></div>
+  </div>
+
   <div class="buttons">
     <button id="btnReset" data-i18n="properties.reset">Reset</button>
     <button id="btnCancel" data-i18n="properties.cancel">Cancel</button>
@@ -335,8 +395,11 @@
 
     let selectedColor = '#ffff99';
     let selectedDays  = [];  // 반복 요일 (0=일, 1=월, ..., 6=토)
+    let allCategories = [];  // 전체 태그 정의
+    let selectedCategories = [];  // 선택된 태그 이름
 
-    const DEFAULTS = { date: '', time: '', priority: 3, alarm: false, color: '#ffff99', alarmDays: [], contentType: 'html' };
+    const DEFAULTS = { date: '', time: '', priority: 3, alarm: false, color: '#ffff99', alarmDays: [], contentType: 'html', categories: [] };
+    const categoryWrap = document.getElementById('categoryWrap');
 
     // ── 알림 체크박스 활성/비활성 (시간만 있으면 활성) ──
     function updateAlarmState() {
@@ -424,7 +487,85 @@
       const radio = document.querySelector(`input[name="editMode"][value="${mode}"]`);
       if (radio) radio.checked = true;
 
+      // 태그
+      if (data.allCategories) allCategories = data.allCategories;
+      selectedCategories = (data.categories || []).slice();
+      renderCategories();
+
       updateAlarmState();
+    }
+
+    function contrastText(hex) {
+      const c = hex.replace('#', '');
+      const r = parseInt(c.substr(0, 2), 16);
+      const g = parseInt(c.substr(2, 2), 16);
+      const b = parseInt(c.substr(4, 2), 16);
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return lum > 0.55 ? '#222' : '#fff';
+    }
+
+    function renderCategories() {
+      categoryWrap.innerHTML = '';
+      if (allCategories.length === 0) {
+        categoryWrap.innerHTML = `<span class="cat-empty">${t('category.noCategories')}</span>`;
+        return;
+      }
+
+      // 그룹별로 분류
+      const grouped = {};   // { groupName: [cat, ...] }
+      const ungrouped = []; // ':' 없는 태그
+      allCategories.forEach(cat => {
+        const colonIdx = cat.name.indexOf(':');
+        if (colonIdx > 0) {
+          const group = cat.name.substring(0, colonIdx);
+          if (!grouped[group]) grouped[group] = [];
+          grouped[group].push(cat);
+        } else {
+          ungrouped.push(cat);
+        }
+      });
+
+      // 그룹 없는 태그 먼저
+      ungrouped.forEach(cat => {
+        categoryWrap.appendChild(makeCatLabel(cat, false));
+      });
+
+      // 그룹별 렌더링
+      Object.keys(grouped).forEach(group => {
+        const header = document.createElement('div');
+        header.className = 'cat-group-header';
+        header.textContent = group;
+        categoryWrap.appendChild(header);
+
+        grouped[group].forEach(cat => {
+          categoryWrap.appendChild(makeCatLabel(cat, true));
+        });
+      });
+    }
+
+    function makeCatLabel(cat, indented) {
+      const label = document.createElement('label');
+      label.className = 'cat-check-label' + (indented ? '' : ' no-group');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = selectedCategories.includes(cat.name);
+      cb.addEventListener('change', () => {
+        if (cb.checked) {
+          if (!selectedCategories.includes(cat.name)) selectedCategories.push(cat.name);
+        } else {
+          selectedCategories = selectedCategories.filter(n => n !== cat.name);
+        }
+      });
+      const badge = document.createElement('span');
+      badge.className = 'cat-badge';
+      badge.style.background = cat.color;
+      badge.style.color = contrastText(cat.color);
+      // 그룹에 속한 태그는 ':' 뒤 이름만 표시
+      const colonIdx = cat.name.indexOf(':');
+      badge.textContent = colonIdx > 0 ? cat.name.substring(colonIdx + 1) : cat.name;
+      label.appendChild(cb);
+      label.appendChild(badge);
+      return label;
     }
 
     function getFormData() {
@@ -439,6 +580,7 @@
         alarmDays:   selectedDays.slice().sort(),
         color:       selectedColor,
         contentType: document.querySelector('input[name="editMode"]:checked').value,
+        categories:  selectedCategories.slice(),
       };
     }
 

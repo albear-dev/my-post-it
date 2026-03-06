@@ -268,6 +268,87 @@ function notifyHistoryWindow() {
   }
 }
 
+/**
+ * 데이터를 비밀번호 보호 ZIP으로 내보낸다.
+ *
+ * @param {string} filePath - 저장할 ZIP 파일 경로
+ * @param {string} password - ZIP 비밀번호
+ * @returns {Promise<boolean>} 성공 여부
+ */
+async function exportData(filePath, password) {
+  if (!state.store || !state.store.dbPath) return false;
+
+  try {
+    const archiver = require('archiver');
+    require('archiver-zip-encrypted');
+    const output = fs.createWriteStream(filePath);
+
+    const archive = archiver.create('zip-encrypted', {
+      zlib: { level: 9 },
+      encryptionMethod: 'aes256',
+      password,
+    });
+
+    return new Promise((resolve, reject) => {
+      output.on('close', () => resolve(true));
+      archive.on('error', err => reject(err));
+
+      archive.pipe(output);
+      archive.file(state.store.dbPath, { name: 'postits.json' });
+      archive.finalize();
+    });
+  } catch (err) {
+    console.error('[history] exportData failed:', err.message);
+    return false;
+  }
+}
+
+/**
+ * 비밀번호 보호 ZIP에서 데이터를 불러온다.
+ *
+ * @param {string} filePath - ZIP 파일 경로
+ * @param {string} password - ZIP 비밀번호
+ * @returns {Promise<boolean>} 성공 여부
+ */
+async function importData(filePath, password) {
+  try {
+    const unzipper = require('unzipper');
+    const directory = await unzipper.Open.file(filePath);
+
+    const entry = directory.files.find(f => f.path === 'postits.json');
+    if (!entry) return false;
+
+    const buffer = await entry.buffer(password);
+    const data = JSON.parse(buffer.toString('utf8'));
+    if (!data.postits) return false;
+
+    // 현재 데이터 백업
+    createBackup('pre-import');
+
+    // 데이터 교체
+    state.store.data.postits = data.postits;
+    if (data.settings) {
+      state.store.data.settings = { ...state.store.data.settings, ...data.settings };
+    }
+    state.store._save();
+
+    // 모든 포스트잇 창 재로드
+    const { reloadAllPostits } = require('./postitWindow');
+    reloadAllPostits();
+
+    // 매니저/캘린더 갱신
+    const { notifyManager } = require('./manager');
+    const { notifyCalendar } = require('./calendar');
+    notifyManager();
+    notifyCalendar();
+
+    return true;
+  } catch (err) {
+    console.error('[history] importData failed:', err.message);
+    return false;
+  }
+}
+
 module.exports = {
   initHistory,
   createBackup,
@@ -278,4 +359,6 @@ module.exports = {
   restoreBackup,
   deleteBackup,
   startAutoBackup,
+  exportData,
+  importData,
 };
