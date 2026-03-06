@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Settings</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    background: #f5f5f5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* ─── 전체 레이아웃 ─── */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ─── 사이드바 ─── */
+  .sidebar {
+    width: 160px;
+    background: #2c2c2c;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 0;
+    flex-shrink: 0;
+  }
+  .sidebar-item {
+    padding: 10px 20px;
+    color: #bbb;
+    font-size: 10pt;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .sidebar-item:hover {
+    background: #3a3a3a;
+    color: #eee;
+  }
+  .sidebar-item.active {
+    background: #3a3a3a;
+    color: #fff;
+    border-left-color: #4a9eff;
+    font-weight: 600;
+  }
+
+  /* ─── 메인 패널 ─── */
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .section {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+  .section.active {
+    display: flex;
+  }
+
+  .section-content {
+    padding: 28px 32px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .section-title {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 24px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e0e0e0;
+  }
+
+  /* ─── 설정 행 ─── */
+  .setting-row {
+    margin-bottom: 20px;
+  }
+  .setting-label {
+    font-size: 9.5pt;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 8px;
+  }
+
+  /* ─── 셀렉트 ─── */
+  .setting-select {
+    width: 100%;
+    max-width: 260px;
+    padding: 7px 10px;
+    font-size: 10pt;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    outline: none;
+  }
+  .setting-select:focus {
+    border-color: #4a9eff;
+  }
+
+  /* ─── 라디오 ─── */
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10pt;
+    color: #333;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background 0.12s;
+  }
+  .radio-group label:hover {
+    background: #e8e8e8;
+  }
+  .radio-group input[type="radio"] {
+    accent-color: #4a9eff;
+  }
+
+  /* ─── 버튼 ─── */
+  .setting-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    font-size: 10pt;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    margin-bottom: 8px;
+  }
+  .setting-btn:hover {
+    background: #e8e8e8;
+    border-color: #aaa;
+  }
+  .setting-btn .icon {
+    font-size: 14px;
+  }
+
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 260px;
+  }
+
+  /* ─── 정보 ─── */
+  .about-info {
+    text-align: center;
+    padding: 30px 0;
+  }
+  .about-info .app-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+  .about-info .app-name {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 4px;
+  }
+  .about-info .app-version {
+    font-size: 10pt;
+    color: #888;
+  }
+
+  /* ─── 태그 관리 ─── */
+  .tag-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .tag-add-form.edit-mode {
+    background: #eef4ff;
+    border-color: #a0c0ff;
+  }
+
+  .tag-form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tag-form-label {
+    font-size: 8.5pt;
+    color: #555;
+    font-weight: 600;
+    width: 42px;
+    flex-shrink: 0;
+  }
+  .tag-form-row input[type="text"] {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 9pt;
+  }
+  .tag-form-row input[type="text"]:focus {
+    outline: none;
+    border-color: #5c9eff;
+    box-shadow: 0 0 3px rgba(92,158,255,0.4);
+  }
+
+  .tag-color-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tag-color-wrap input[type="color"] {
+    width: 28px; height: 28px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 1px;
+    cursor: pointer;
+    background: none;
+  }
+  .tag-color-wrap input[type="text"] {
+    width: 72px;
+    padding: 5px 6px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 8.5pt;
+  }
+
+  .tag-color-presets {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .tag-swatch {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .tag-swatch:hover { border-color: #888; }
+  .tag-swatch.active { border-color: #333; }
+
+  .tag-btn-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .tag-btn-row button {
+    padding: 5px 16px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 9pt;
+  }
+  .tag-btn-add {
+    background: #ffe066;
+    border-color: #ccaa00 !important;
+  }
+  .tag-btn-add:hover { background: #ffd633; }
+  .tag-btn-update {
+    background: #4a8df8;
+    color: #fff;
+    border-color: #4a8df8 !important;
+  }
+  .tag-btn-update:hover { background: #3a7de8; }
+  .tag-btn-edit-cancel {
+    background: #fff;
+  }
+  .tag-btn-edit-cancel:hover { background: #eee; }
+
+  /* 태그 목록 */
+  .tag-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    min-height: 120px;
+  }
+  .tag-list::-webkit-scrollbar { width: 8px; }
+  .tag-list::-webkit-scrollbar-track { background: transparent; }
+  .tag-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+  .tag-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: default;
+  }
+  .tag-item:last-child { border-bottom: none; }
+  .tag-item:hover { background: #fafaf0; }
+  .tag-item.active-edit { background: #e8f0fe; }
+  .tag-item.grouped { padding-left: 28px; }
+
+  .tag-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .tag-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tag-item button {
+    padding: 3px 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 8pt;
+  }
+  .tag-item button:hover { background: #eee; }
+  .tag-item .btn-del { color: #c00; border-color: #c00; }
+  .tag-item .btn-del:hover { background: #fee; }
+
+  .tag-group-header {
+    padding: 6px 14px 3px;
+    font-size: 8pt;
+    font-weight: 700;
+    color: #666;
+    background: #f8f8f8;
+    border-bottom: 1px solid #f0f0f0;
+    user-select: none;
+  }
+
+  .tag-empty-msg {
+    text-align: center;
+    padding: 30px;
+    color: #999;
+    font-size: 9.5pt;
+  }
+
+  /* ─── 타이틀바 설정 ─── */
+  .tb-desc {
+    font-size: 9pt;
+    color: #777;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .tb-columns {
+    display: flex;
+    gap: 12px;
+  }
+  .tb-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .tb-col-header {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #666;
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    background: #eee;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .tb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 60px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 4px;
+    background: #fafafa;
+  }
+  .tb-list.drag-over-list {
+    background: #eef4ff;
+    border-color: #4a9eff;
+  }
+  .tb-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    cursor: grab;
+    transition: background 0.12s, box-shadow 0.12s;
+    font-size: 9pt;
+  }
+  .tb-item:hover {
+    background: #f8f8ff;
+  }
+  .tb-item.dragging {
+    opacity: 0.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .tb-item.drag-over {
+    border-color: #4a9eff;
+    background: #eef4ff;
+  }
+  .tb-item .drag-handle {
+    color: #bbb;
+    font-size: 12px;
+    cursor: grab;
+    flex-shrink: 0;
+  }
+  .tb-item input[type="checkbox"] {
+    accent-color: #4a9eff;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+  .tb-item .tb-label {
+    font-size: 9pt;
+    color: #333;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tb-item select {
+    padding: 2px 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 8pt;
+    background: #fff;
+    max-width: 70px;
+  }
+  .tb-list-empty {
+    text-align: center;
+    padding: 16px 8px;
+    color: #bbb;
+    font-size: 8.5pt;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- 사이드바 -->
+  <div class="sidebar">
+    <div class="sidebar-item active" data-section="general" data-i18n="settings.general">일반</div>
+    <div class="sidebar-item" data-section="titlebar" data-i18n="settings.titlebar">타이틀바</div>
+    <div class="sidebar-item" data-section="backup" data-i18n="settings.backup">백업</div>
+    <div class="sidebar-item" data-section="tags" data-i18n="settings.tags">태그관리</div>
+    <div class="sidebar-item" data-section="data" data-i18n="settings.data">데이터</div>
+    <div class="sidebar-item" data-section="about" data-i18n="settings.about">정보</div>
+  </div>
+
+  <!-- 메인 패널 -->
+  <div class="panel">
+    <!-- 일반 -->
+    <div class="section active" id="sec-general">
+      <div class="section-content">
+        <div class="section-title" data-i18n="settings.general">일반</div>
+        <div class="setting-row">
+          <div class="setting-label" data-i18n="settings.language">언어</div>
+          <select class="setting-select" id="langSelect"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 타이틀바 -->
+    <div class="section" id="sec-titlebar">
+      <div class="section-content">
+        <div class="section-title" data-i18n="settings.titlebar">타이틀바</div>
+        <div class="tb-desc" data-i18n="settings.titlebarDesc">포스트잇 상단 타이틀바에 표시할 항목과 순서를 설정합니다.</div>
+        <div class="tb-columns">
+          <div class="tb-column">
+            <div class="tb-col-header" data-i18n="settings.titlebarLeft">왼쪽 정렬</div>
+            <div class="tb-list" id="tbListLeft"></div>
+          </div>
+          <div class="tb-column">
+            <div class="tb-col-header" data-i18n="settings.titlebarRight">오른쪽 정렬</div>
+            <div class="tb-list" id="tbListRight"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 백업 -->
+    <div class="section" id="sec-backup">
+      <div class="section-content">
+        <div class="section-title" data-i18n="settings.backup">백업</div>
+        <div class="setting-row">
+          <div class="setting-label" data-i18n="settings.backupInterval">백업 주기</div>
+          <div class="radio-group" id="backupRadios">
+            <label>
+              <input type="radio" name="backupInterval" value="0">
+              <span data-i18n="settings.backupEvery">매번 (저장할 때마다)</span>
+            </label>
+            <label>
+              <input type="radio" name="backupInterval" value="60000">
+              <span data-i18n="settings.backup1min">1분</span>
+            </label>
+            <label>
+              <input type="radio" name="backupInterval" value="600000">
+              <span data-i18n="settings.backup10min">10분</span>
+            </label>
+            <label>
+              <input type="radio" name="backupInterval" value="1800000">
+              <span data-i18n="settings.backup30min">30분</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 태그 -->
+    <div class="section" id="sec-tags">
+      <div class="section-content" style="display:flex; flex-direction:column; gap:16px;">
+        <div class="section-title" style="margin-bottom:0;">
+          <span data-i18n="settings.tags">태그</span>
+        </div>
+
+        <!-- 추가/편집 폼 -->
+        <div class="tag-add-form" id="tagAddForm">
+          <div class="tag-form-row">
+            <span class="tag-form-label" data-i18n="category.name">이름</span>
+            <input type="text" id="tagInputName" data-i18n-placeholder="category.namePlaceholder" placeholder="그룹명:태그명">
+          </div>
+          <div class="tag-form-row">
+            <span class="tag-form-label" data-i18n="category.color">색상</span>
+            <div class="tag-color-wrap">
+              <input type="color" id="tagInputColor" value="#90caf9">
+              <input type="text" id="tagInputHex" value="#90caf9" data-i18n-placeholder="category.hexPlaceholder" placeholder="#000000" maxlength="7">
+            </div>
+            <div class="tag-color-presets">
+              <span class="tag-swatch" data-color="#f8a0a0" style="background:#f8a0a0;"></span>
+              <span class="tag-swatch" data-color="#ffcc80" style="background:#ffcc80;"></span>
+              <span class="tag-swatch" data-color="#fff59d" style="background:#fff59d;"></span>
+              <span class="tag-swatch" data-color="#a5d6a7" style="background:#a5d6a7;"></span>
+              <span class="tag-swatch active" data-color="#90caf9" style="background:#90caf9;"></span>
+              <span class="tag-swatch" data-color="#9fa8da" style="background:#9fa8da;"></span>
+              <span class="tag-swatch" data-color="#ce93d8" style="background:#ce93d8;"></span>
+              <span class="tag-swatch" data-color="#bdbdbd" style="background:#bdbdbd;"></span>
+              <span class="tag-swatch" data-color="#555555" style="background:#555555;"></span>
+            </div>
+          </div>
+          <div class="tag-btn-row">
+            <button class="tag-btn-edit-cancel" id="tagBtnEditCancel" style="display:none;" data-i18n="category.cancel">취소</button>
+            <button class="tag-btn-update" id="tagBtnUpdate" style="display:none;" data-i18n="category.save">저장</button>
+            <button class="tag-btn-add" id="tagBtnAdd" data-i18n="category.add">추가</button>
+          </div>
+        </div>
+
+        <!-- 태그 목록 -->
+        <div class="tag-list" id="tagList"></div>
+      </div>
+    </div>
+
+    <!-- 데이터 -->
+    <div class="section" id="sec-data">
+      <div class="section-content">
+        <div class="section-title" data-i18n="settings.data">데이터</div>
+        <div class="setting-row">
+          <div class="btn-group">
+            <button class="setting-btn" id="btnOpenFolder">
+              <span class="icon">📂</span>
+              <span data-i18n="settings.openDataFolder">데이터 폴더 열기</span>
+            </button>
+            <button class="setting-btn" id="btnExport">
+              <span class="icon">📤</span>
+              <span data-i18n="settings.exportData">데이터 내보내기</span>
+            </button>
+            <button class="setting-btn" id="btnImport">
+              <span class="icon">📥</span>
+              <span data-i18n="settings.importData">데이터 불러오기</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 정보 -->
+    <div class="section" id="sec-about">
+      <div class="section-content">
+        <div class="section-title" data-i18n="settings.about">정보</div>
+        <div class="about-info">
+          <div class="app-icon">📌</div>
+          <div class="app-name" data-i18n="settings.appName">MyPostit</div>
+          <div class="app-version"><span data-i18n="settings.version">버전</span> <span id="appVersion">1.0.0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const { ipcRenderer } = require('electron');
+
+  // ─── i18n ───
+  let _translations = {};
+  function t(key) { return _translations[key] || key; }
+
+  ipcRenderer.on('set-translations', (_, translations) => {
+    _translations = translations;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (translations[key]) el.textContent = translations[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (translations[key]) el.placeholder = translations[key];
+    });
+    // 태그 목록 다시 렌더링 (번역 적용)
+    renderTagList();
+  });
+
+  // ─── 설정 초기화 ───
+  let categories = [];
+
+  ipcRenderer.on('init-settings', (_, data) => {
+    // 언어 드롭다운
+    const langSelect = document.getElementById('langSelect');
+    langSelect.innerHTML = '';
+    data.locales.forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc.code;
+      opt.textContent = loc.nativeName;
+      if (loc.code === data.currentLocale) opt.selected = true;
+      langSelect.appendChild(opt);
+    });
+
+    // 백업 주기
+    const interval = data.backupInterval ?? 60000;
+    const radio = document.querySelector(`input[name="backupInterval"][value="${interval}"]`);
+    if (radio) radio.checked = true;
+
+    // 버전
+    document.getElementById('appVersion').textContent = data.appVersion || '1.0.0';
+
+    // 태그
+    categories = data.categories || [];
+    renderTagList();
+
+    // 타이틀바 설정
+    initTitleBarConfig(data.titleBarConfig, data.tagGroups || []);
+  });
+
+  // ─── 사이드바 전환 ───
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      item.classList.add('active');
+      document.getElementById('sec-' + item.dataset.section).classList.add('active');
+    });
+  });
+
+  // ─── 언어 변경 ───
+  document.getElementById('langSelect').addEventListener('change', (e) => {
+    ipcRenderer.send('settings-change-language', e.target.value);
+  });
+
+  // ─── 백업 주기 변경 ───
+  document.querySelectorAll('input[name="backupInterval"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      ipcRenderer.send('settings-change-backup-interval', parseInt(e.target.value));
+    });
+  });
+
+  // ─── 데이터 버튼들 ───
+  document.getElementById('btnOpenFolder').addEventListener('click', () => {
+    ipcRenderer.send('settings-open-data-folder');
+  });
+  document.getElementById('btnExport').addEventListener('click', () => {
+    ipcRenderer.send('settings-export-data');
+  });
+  document.getElementById('btnImport').addEventListener('click', () => {
+    ipcRenderer.send('settings-import-data');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 태그 관리 (inline)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  let editingIdx = -1;
+
+  const tagAddForm      = document.getElementById('tagAddForm');
+  const tagInputName    = document.getElementById('tagInputName');
+  const tagInputColor   = document.getElementById('tagInputColor');
+  const tagInputHex     = document.getElementById('tagInputHex');
+  const tagList         = document.getElementById('tagList');
+  const tagBtnAdd       = document.getElementById('tagBtnAdd');
+  const tagBtnUpdate    = document.getElementById('tagBtnUpdate');
+  const tagBtnEditCancel = document.getElementById('tagBtnEditCancel');
+
+  // 색상 동기화
+  function updateTagSwatchHighlight() {
+    document.querySelectorAll('.tag-swatch').forEach(el => {
+      el.classList.toggle('active', el.dataset.color === tagInputColor.value);
+    });
+  }
+
+  tagInputColor.addEventListener('input', () => {
+    tagInputHex.value = tagInputColor.value;
+    updateTagSwatchHighlight();
+  });
+  tagInputHex.addEventListener('input', () => {
+    const v = tagInputHex.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      tagInputColor.value = v;
+      updateTagSwatchHighlight();
+    }
+  });
+  document.querySelectorAll('.tag-swatch').forEach(el => {
+    el.addEventListener('click', () => {
+      tagInputColor.value = el.dataset.color;
+      tagInputHex.value = el.dataset.color;
+      updateTagSwatchHighlight();
+    });
+  });
+
+  // 폼 모드 전환
+  function setTagFormMode(mode) {
+    if (mode === 'edit') {
+      tagAddForm.classList.add('edit-mode');
+      tagBtnAdd.style.display = 'none';
+      tagBtnUpdate.style.display = '';
+      tagBtnEditCancel.style.display = '';
+    } else {
+      tagAddForm.classList.remove('edit-mode');
+      tagBtnAdd.style.display = '';
+      tagBtnUpdate.style.display = 'none';
+      tagBtnEditCancel.style.display = 'none';
+      editingIdx = -1;
+    }
+  }
+
+  function startTagEdit(idx) {
+    const cat = categories[idx];
+    if (!cat) return;
+    editingIdx = idx;
+    tagInputName.value = cat.name;
+    tagInputColor.value = cat.color;
+    tagInputHex.value = cat.color;
+    updateTagSwatchHighlight();
+    setTagFormMode('edit');
+    renderTagList();
+    // confirm() 후 포커스가 풀릴 수 있으므로 약간 지연
+    setTimeout(() => { tagInputName.focus(); tagInputName.select(); }, 50);
+  }
+
+  function cancelTagEdit() {
+    tagInputName.value = '';
+    tagInputColor.value = '#90caf9';
+    tagInputHex.value = '#90caf9';
+    updateTagSwatchHighlight();
+    setTagFormMode('add');
+    renderTagList();
+  }
+
+  // 추가
+  tagBtnAdd.addEventListener('click', addTag);
+  tagInputName.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (editingIdx >= 0) applyTagEdit();
+      else addTag();
+    }
+  });
+
+  function addTag() {
+    const name = tagInputName.value.trim();
+    if (!name) return;
+    if (categories.some(c => c.name === name)) {
+      tagInputName.select();
+      return;
+    }
+    categories.push({ name, color: tagInputColor.value });
+    tagInputName.value = '';
+    tagInputName.focus();
+    renderTagList();
+    saveCategories();
+  }
+
+  // 편집 적용
+  tagBtnUpdate.addEventListener('click', applyTagEdit);
+  tagBtnEditCancel.addEventListener('click', cancelTagEdit);
+
+  function applyTagEdit() {
+    if (editingIdx < 0) return;
+    const cat = categories[editingIdx];
+    const oldName = cat.name;
+    const newName = tagInputName.value.trim();
+    if (newName && (newName === oldName || !categories.some(c => c.name === newName))) {
+      cat.name = newName;
+    }
+    cat.color = tagInputColor.value;
+    // 이름이 바뀌었으면 rename 맵 전달
+    const renames = {};
+    if (cat.name !== oldName) renames[oldName] = cat.name;
+    cancelTagEdit();
+    saveCategories(renames);
+  }
+
+  // 저장 (즉시 반영)
+  function saveCategories(renames, deletes) {
+    ipcRenderer.send('settings-save-categories', categories, renames || {}, deletes || []);
+  }
+
+  // Utility
+  function contrastText(hex) {
+    const c = hex.replace('#', '');
+    const r = parseInt(c.substr(0, 2), 16);
+    const g = parseInt(c.substr(2, 2), 16);
+    const b = parseInt(c.substr(4, 2), 16);
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return lum > 0.55 ? '#222' : '#fff';
+  }
+
+  // 렌더링
+  function renderTagList() {
+    tagList.innerHTML = '';
+    if (categories.length === 0) {
+      tagList.innerHTML = `<div class="tag-empty-msg">${t('category.noCategories')}</div>`;
+      return;
+    }
+
+    const grouped = {};
+    const ungrouped = [];
+    categories.forEach((cat, idx) => {
+      const colonIdx = cat.name.indexOf(':');
+      if (colonIdx > 0) {
+        const group = cat.name.substring(0, colonIdx);
+        if (!grouped[group]) grouped[group] = [];
+        grouped[group].push({ cat, idx });
+      } else {
+        ungrouped.push({ cat, idx });
+      }
+    });
+
+    ungrouped.forEach(item => {
+      tagList.appendChild(makeTagItem(item.cat, item.idx, false));
+    });
+
+    Object.keys(grouped).forEach(group => {
+      const header = document.createElement('div');
+      header.className = 'tag-group-header';
+      header.textContent = group;
+      tagList.appendChild(header);
+      grouped[group].forEach(item => {
+        tagList.appendChild(makeTagItem(item.cat, item.idx, true));
+      });
+    });
+  }
+
+  function makeTagItem(cat, idx, isGrouped) {
+    const div = document.createElement('div');
+    div.className = 'tag-item' + (isGrouped ? ' grouped' : '');
+    if (editingIdx === idx) div.classList.add('active-edit');
+
+    const txtColor = contrastText(cat.color);
+    const colonIdx = cat.name.indexOf(':');
+    const displayName = colonIdx > 0 ? cat.name.substring(colonIdx + 1) : cat.name;
+
+    div.innerHTML =
+      `<span class="tag-badge" style="background:${cat.color};color:${txtColor};">${displayName}</span>` +
+      `<span class="tag-name"></span>` +
+      `<button class="btn-edit">${t('category.edit')}</button>` +
+      `<button class="btn-del">${t('category.delete')}</button>`;
+
+    div.querySelector('.btn-edit').addEventListener('click', e => {
+      e.stopPropagation();
+      startTagEdit(idx);
+    });
+
+    div.querySelector('.btn-del').addEventListener('click', async e => {
+      e.stopPropagation();
+      const confirmed = await ipcRenderer.invoke('dialog-confirm', t('category.deleteConfirm'));
+      if (!confirmed) return;
+      const deletedName = categories[idx].name;
+      // 편집 상태 완전 리셋
+      editingIdx = -1;
+      setTagFormMode('add');
+      tagInputName.value = '';
+      tagInputColor.value = '#90caf9';
+      tagInputHex.value = '#90caf9';
+      categories.splice(idx, 1);
+      renderTagList();
+      saveCategories(null, [deletedName]);
+    });
+
+    div.addEventListener('dblclick', () => startTagEdit(idx));
+
+    return div;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 타이틀바 설정 (왼쪽/오른쪽 그룹 + 드래그 정렬 + 체크박스)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const DEFAULT_TB_ITEMS = [
+    { key: 'priority', visible: true,  align: 'left' },
+    { key: 'dday',     visible: true,  align: 'left' },
+    { key: 'date',     visible: false, align: 'left' },
+    { key: 'time',     visible: true,  align: 'left' },
+    { key: 'title',    visible: true,  align: 'left' },
+    { key: 'tags',     visible: false, align: 'right', tagGroup: '' },
+    { key: 'mode',     visible: true,  align: 'right' },
+  ];
+
+  let tbConfig = [];
+  let tbTagGroups = [];
+  let tbDragKey = null; // 현재 드래그 중인 아이템의 key
+
+  function initTitleBarConfig(saved, tagGroups) {
+    tbTagGroups = tagGroups;
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      const knownKeys = saved.map(i => i.key);
+      tbConfig = saved.map(i => ({ ...i, align: i.align || 'left' }));
+      DEFAULT_TB_ITEMS.forEach(def => {
+        if (!knownKeys.includes(def.key)) tbConfig.push({ ...def });
+      });
+    } else {
+      tbConfig = DEFAULT_TB_ITEMS.map(i => ({ ...i }));
+    }
+    renderTbItems();
+  }
+
+  /** key로 tbConfig에서 아이템을 찾는다 */
+  function tbFind(key) { return tbConfig.find(i => i.key === key); }
+
+  /** 지정 side의 아이템만 순서대로 반환 */
+  function tbSide(side) { return tbConfig.filter(i => i.align === side); }
+
+  /** 아이템 DOM 생성 (체크박스 + 라벨 + 태그 드롭다운) */
+  function renderTbItems() {
+    renderTbSide(document.getElementById('tbListLeft'), 'left');
+    renderTbSide(document.getElementById('tbListRight'), 'right');
+  }
+
+  function renderTbSide(container, side) {
+    container.innerHTML = '';
+    const items = tbSide(side);
+
+    if (items.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'tb-list-empty';
+      empty.textContent = '—';
+      container.appendChild(empty);
+    }
+
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'tb-item';
+      div.draggable = true;
+      div.dataset.key = item.key;
+
+      const dragHandle = document.createElement('span');
+      dragHandle.className = 'drag-handle';
+      dragHandle.textContent = '☰';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = item.visible;
+      cb.addEventListener('change', () => {
+        item.visible = cb.checked;
+        saveTbConfig();
+      });
+
+      const label = document.createElement('span');
+      label.className = 'tb-label';
+      label.textContent = t('titlebar.' + item.key);
+
+      div.appendChild(dragHandle);
+      div.appendChild(cb);
+      div.appendChild(label);
+
+      // 태그: 그룹 선택 드롭다운
+      if (item.key === 'tags' && tbTagGroups.length > 0) {
+        const sel = document.createElement('select');
+        const optAll = document.createElement('option');
+        optAll.value = '';
+        optAll.textContent = t('manager.catAll');
+        sel.appendChild(optAll);
+        tbTagGroups.forEach(g => {
+          const opt = document.createElement('option');
+          opt.value = g;
+          opt.textContent = g;
+          if (item.tagGroup === g) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+          item.tagGroup = sel.value;
+          saveTbConfig();
+        });
+        div.appendChild(sel);
+      }
+
+      // 아이템 드래그 이벤트
+      div.addEventListener('dragstart', (e) => {
+        tbDragKey = item.key;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.key);
+        requestAnimationFrame(() => div.classList.add('dragging'));
+      });
+      div.addEventListener('dragend', () => {
+        tbDragKey = null;
+        div.classList.remove('dragging');
+        document.querySelectorAll('.tb-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+        document.querySelectorAll('.tb-list.drag-over-list').forEach(el => el.classList.remove('drag-over-list'));
+      });
+      div.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (tbDragKey === item.key) return;
+        div.classList.add('drag-over');
+      });
+      div.addEventListener('dragleave', () => {
+        div.classList.remove('drag-over');
+      });
+      div.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        div.classList.remove('drag-over');
+        const draggedKey = tbDragKey;
+        if (!draggedKey || draggedKey === item.key) return;
+
+        const dragged = tbFind(draggedKey);
+        if (!dragged) return;
+
+        // tbConfig에서 제거
+        tbConfig = tbConfig.filter(i => i.key !== draggedKey);
+        // 드롭 대상의 side에 맞추고 그 앞에 삽입
+        dragged.align = side;
+        const targetIdx = tbConfig.indexOf(item);
+        tbConfig.splice(targetIdx, 0, dragged);
+        renderTbItems();
+        saveTbConfig();
+      });
+
+      container.appendChild(div);
+    });
+  }
+
+  // 컨테이너 레벨 드래그 이벤트 (빈 영역에 드롭 허용) — 한 번만 등록
+  ['tbListLeft', 'tbListRight'].forEach(id => {
+    const container = document.getElementById(id);
+    const side = id === 'tbListLeft' ? 'left' : 'right';
+
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!e.target.closest('.tb-item')) {
+        container.classList.add('drag-over-list');
+      }
+    });
+    container.addEventListener('dragleave', (e) => {
+      if (!container.contains(e.relatedTarget)) {
+        container.classList.remove('drag-over-list');
+      }
+    });
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      container.classList.remove('drag-over-list');
+      if (e.target.closest('.tb-item')) return;
+      const draggedKey = tbDragKey;
+      if (!draggedKey) return;
+
+      const dragged = tbFind(draggedKey);
+      if (!dragged) return;
+
+      // tbConfig에서 제거 후 해당 side 맨 끝에 추가
+      tbConfig = tbConfig.filter(i => i.key !== draggedKey);
+      dragged.align = side;
+      // side의 마지막 아이템 뒤에 삽입
+      const sideItems = tbConfig.filter(i => i.align === side);
+      if (sideItems.length > 0) {
+        const lastIdx = tbConfig.indexOf(sideItems[sideItems.length - 1]);
+        tbConfig.splice(lastIdx + 1, 0, dragged);
+      } else {
+        tbConfig.push(dragged);
+      }
+      renderTbItems();
+      saveTbConfig();
+    });
+  });
+
+  function saveTbConfig() {
+    ipcRenderer.send('settings-save-titlebar-config', tbConfig);
+  }
+</script>
+</body>
+</html>

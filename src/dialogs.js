@@ -116,7 +116,7 @@ function openProperties(postitId) {
   if (!postit) return;
 
   const pwin = new BrowserWindow({
-    width: 350, height: 440,
+    width: 350, height: 530,
     resizable: false, minimizable: false, maximizable: false,
     title: i18n.t('window.propertiesTitle'),
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -291,18 +291,21 @@ function registerDialogIpc() {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
 
-  /** 태그 설정 저장 */
-  ipcMain.on('category-settings-save', (event, categories) => {
-    state.store.setCategories(categories);
+  /** 새 포스트잇 타입 선택 */
+  ipcMain.on('newpostit-select', (event, contentType) => {
+    const { createNewPostit } = require('./postitWindow');
+    createNewPostit(contentType);
     notifyManager();
+    notifyCalendar();
     markDirty();
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
 
-  /** 태그 설정 취소 */
-  ipcMain.on('category-settings-cancel', (event) => {
+  /** 새 포스트잇 다이얼로그 취소 */
+  ipcMain.on('newpostit-cancel', (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
+
 }
 
 // ─── 비밀번호 다이얼로그 ─────────────────────────────────────────────────────
@@ -375,35 +378,28 @@ function openExportPasswordDialog(mode) {
   });
 }
 
-// ─── 태그 설정 ────────────────────────────────────────────────────────────
+// ─── 새 포스트잇 타입 선택 ──────────────────────────────────────────────────
 
 /**
- * 태그 설정 창을 연다 (싱글턴).
+ * 새 포스트잇 생성 시 편집 모드(에디터/마크다운) 선택 다이얼로그를 연다.
  */
-function openCategorySettings() {
-  if (state.categorySettingsWindow && !state.categorySettingsWindow.isDestroyed()) {
-    state.categorySettingsWindow.focus();
-    return;
-  }
-
-  const cwin = new BrowserWindow({
-    width: 520, height: 500,
-    minWidth: 400, minHeight: 380,
-    resizable: true, minimizable: false, maximizable: false,
-    title: i18n.t('window.categorySettingsTitle'),
+function openNewPostitDialog() {
+  const nwin = new BrowserWindow({
+    width: 320, height: 230,
+    resizable: false, minimizable: false, maximizable: false,
+    title: i18n.t('window.newPostitTitle'),
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  cwin.setMenuBarVisibility(false);
-  cwin.loadFile(path.join(__dirname, '..', 'categorysettings.html'));
+  nwin.setMenuBarVisibility(false);
+  nwin.loadFile(path.join(__dirname, '..', 'newpostit.html'));
 
-  cwin.webContents.once('did-finish-load', () => {
-    cwin.webContents.send('set-translations', i18n.getAllTranslations());
-    cwin.webContents.send('init-categories', state.store.getCategories());
+  nwin.webContents.once('did-finish-load', () => {
+    nwin.webContents.send('set-translations', i18n.getAllTranslations());
   });
 
-  state.categorySettingsWindow = cwin;
-  cwin.on('closed', () => { state.categorySettingsWindow = null; });
+  state.newPostitDialogWindow = nwin;
+  nwin.on('closed', () => { state.newPostitDialogWindow = null; });
 }
 
-module.exports = { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, openExportPasswordDialog, openCategorySettings, registerDialogIpc };
+module.exports = { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, openExportPasswordDialog, openNewPostitDialog, registerDialogIpc };

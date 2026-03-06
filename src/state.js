@@ -57,6 +57,9 @@ module.exports = {
   /** @type {{ mode: string, filePath?: string }|null} 내보내기/불러오기 진행 정보 */
   exportImportTarget: null,
 
-  /** @type {import('electron').BrowserWindow|null} 태그 설정 창 (싱글턴) */
-  categorySettingsWindow: null,
+  /** @type {import('electron').BrowserWindow|null} 새 포스트잇 타입 선택 다이얼로그 */
+  newPostitDialogWindow: null,
+
+  /** @type {import('electron').BrowserWindow|null} 설정 창 (싱글턴) */
+  settingsWindow: null,
 };

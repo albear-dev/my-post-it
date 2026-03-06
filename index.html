@@ -38,11 +38,25 @@
       flex: 1;
       display: flex;
       align-items: center;
-      gap: 5px;
       overflow: hidden;
       padding: 0 6px;
       font-size: 10pt;
       color: #666600;
+    }
+    #title-left {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: 1;
+      overflow: hidden;
+      min-width: 0;
+    }
+    #title-right {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+      margin-left: auto;
     }
 
     .badge {
@@ -52,9 +66,12 @@
       white-space: nowrap;
     }
 
-    #badge-mode { color: #555; font-size: 10pt; background: rgba(255,255,255,0.5); border-radius: 3px; padding: 0 3px; }
+    #badge-mode { color: #000; }
     #badge-dday { color: #995500; }
+    #badge-date { color: #666; font-size: 9pt; }
     #badge-time { color: #556600; }
+    #badge-tags { display: flex; gap: 3px; align-items: center; font-size: 8.5pt; }
+    #badge-tags .tag-chip { padding: 0 4px; border-radius: 3px; font-weight: 600; white-space: nowrap; }
     #badge-readonly { color: #c00; }
 
     #title-text {
@@ -514,12 +531,17 @@
   <div id="drag-handle">
     <button id="btn-fold"   class="handle-btn" data-i18n-title="postit.foldToggle" title="Fold / Unfold">▾</button>
     <div id="title-info">
-      <span id="badge-mode"     class="badge"></span>
-      <span id="badge-priority" class="badge"></span>
-      <span id="badge-readonly" class="badge" style="display:none;"></span>
-      <span id="badge-dday"     class="badge"></span>
-      <span id="badge-time"     class="badge"></span>
-      <span id="title-text"></span>
+      <div id="title-left">
+        <span id="badge-mode"     class="badge"></span>
+        <span id="badge-priority" class="badge"></span>
+        <span id="badge-readonly" class="badge" style="display:none;"></span>
+        <span id="badge-dday"     class="badge"></span>
+        <span id="badge-date"     class="badge" style="display:none;"></span>
+        <span id="badge-time"     class="badge"></span>
+        <span id="badge-tags"     class="badge" style="display:none;"></span>
+        <span id="title-text"></span>
+      </div>
+      <div id="title-right"></div>
     </div>
     <button id="btn-delete" class="handle-btn" data-i18n-title="postit.delete" title="Delete">✕</button>
   </div>
@@ -571,13 +593,30 @@
     const badgePriority  = document.getElementById('badge-priority');
     const badgeReadonly  = document.getElementById('badge-readonly');
     const badgeDday      = document.getElementById('badge-dday');
+    const badgeDate      = document.getElementById('badge-date');
     const badgeTime      = document.getElementById('badge-time');
+    const badgeTags      = document.getElementById('badge-tags');
     const titleText      = document.getElementById('title-text');
+    const titleInfoEl    = document.getElementById('title-info');
+    const titleLeftEl    = document.getElementById('title-left');
+    const titleRightEl   = document.getElementById('title-right');
 
     let savedRanges = []; // 컨텍스트 메뉴 열기 직전에 저장
 
     // 포스트잇 속성 (날짜/시간/우선순위/편집모드)
     let postitProps = { date: '', time: '', priority: 3 };
+    let postitCategories = [];
+    let globalCategories = []; // 전체 태그 정의 (이름+색상)
+    let titleBarConfig = null; // 타이틀바 설정 (null이면 기본 순서)
+
+    /** 배경색에 맞는 텍스트 색상 반환 */
+    function contrastText(hex) {
+      const c = hex.replace('#', '');
+      const r = parseInt(c.substr(0, 2), 16);
+      const g = parseInt(c.substr(2, 2), 16);
+      const b = parseInt(c.substr(4, 2), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#222' : '#fff';
+    }
     let contentType = 'html'; // 'html' | 'wiki'
     let isLocked = false;
     let isReadOnly = false;
@@ -691,30 +730,79 @@
     }
 
     // ── 타이틀 바 갱신 ──────────────────────────────────
+    const DEFAULT_TB_CONFIG = [
+      { key: 'priority', visible: true,  align: 'left' },
+      { key: 'dday',     visible: true,  align: 'left' },
+      { key: 'date',     visible: false, align: 'left' },
+      { key: 'time',     visible: true,  align: 'left' },
+      { key: 'title',    visible: true,  align: 'left' },
+      { key: 'tags',     visible: false, align: 'right', tagGroup: '' },
+      { key: 'mode',     visible: true,  align: 'right' },
+    ];
+
+    const badgeMap = {
+      mode: badgeMode,
+      priority: badgePriority,
+      dday: badgeDday,
+      date: badgeDate,
+      time: badgeTime,
+      title: titleText,
+      tags: badgeTags,
+    };
+
     function updateTitleInfo() {
-      // 모드 표시
-      if (isPreviewMode) {
-        badgeMode.textContent = contentType === 'wiki' ? t('mode.preview') : t('mode.htmlSource');
-      } else {
-        badgeMode.textContent = contentType === 'wiki' ? t('mode.wiki') : t('mode.editor');
-      }
+      // 기존 설정에 align이 없으면 DEFAULT에서 기본값 부여
+      const config = (titleBarConfig || DEFAULT_TB_CONFIG).map(i => {
+        if (i.align) return i;
+        const def = DEFAULT_TB_CONFIG.find(d => d.key === i.key);
+        return { ...i, align: def ? def.align : 'left' };
+      });
+
+      // ── 값 업데이트 ──
+      badgeMode.textContent = contentType === 'wiki' ? '[M]' : '[E]';
 
       const p = postitProps.priority ?? 3;
       badgePriority.textContent = `[${t(`priority.${p}.short`)}]`;
       badgePriority.style.color = PRIORITY_COLORS[p] || '#1e88e5';
 
-      // 읽기전용 표시
       badgeReadonly.textContent = `[${t('badge.readOnly')}]`;
       badgeReadonly.style.display = isReadOnly ? '' : 'none';
 
       const dday = calcDday(postitProps.date);
       badgeDday.textContent = dday;
-      badgeDday.style.display = dday ? '' : 'none';
 
+      badgeDate.textContent = postitProps.date || '';
       badgeTime.textContent = postitProps.time || '';
-      badgeTime.style.display = postitProps.time ? '' : 'none';
 
-      // 타이틀 텍스트 추출
+      // 태그: 색상 칩으로 렌더링
+      let hasTag = false;
+      badgeTags.innerHTML = '';
+      if (postitCategories.length > 0) {
+        const tagItem = config.find(c => c.key === 'tags');
+        const filterGroup = tagItem && tagItem.tagGroup ? tagItem.tagGroup : '';
+        const filtered = filterGroup
+          ? postitCategories.filter(c => c.startsWith(filterGroup + ':'))
+          : postitCategories;
+        filtered.forEach(c => {
+          const idx = c.indexOf(':');
+          const displayName = idx > 0 ? c.substring(idx + 1) : c;
+          const chip = document.createElement('span');
+          chip.className = 'tag-chip';
+          chip.textContent = displayName;
+          const catDef = globalCategories.find(gc => gc.name === c);
+          if (catDef && catDef.color) {
+            chip.style.background = catDef.color;
+            chip.style.color = contrastText(catDef.color);
+          } else {
+            chip.style.background = 'rgba(255,255,255,0.4)';
+            chip.style.color = '#555';
+          }
+          badgeTags.appendChild(chip);
+          hasTag = true;
+        });
+      }
+
+      // 타이틀 텍스트
       let first = '';
       if (contentType === 'wiki') {
         first = wikiToPlainText(editorWiki.value);
@@ -728,6 +816,45 @@
         first = plainText.split('\n').find(l => l.trim()) || '';
       }
       titleText.textContent = first || t('postit.empty');
+
+      // ── 왼쪽/오른쪽 그룹 분리 후 배치 ──
+      const leftItems = config.filter(i => i.align !== 'right');
+      const rightItems = config.filter(i => i.align === 'right');
+
+      // 모든 뱃지를 부모에서 분리
+      Object.values(badgeMap).forEach(el => el.remove());
+      badgeReadonly.remove();
+
+      // 왼쪽 그룹 배치
+      // titleLeftEl 안의 기존 뱃지만 비우고 다시 배치
+      while (titleLeftEl.firstChild) titleLeftEl.removeChild(titleLeftEl.firstChild);
+      leftItems.forEach(item => {
+        const el = badgeMap[item.key];
+        if (!el) return;
+        let shouldShow = item.visible;
+        if (item.key === 'dday') shouldShow = item.visible && !!dday;
+        if (item.key === 'date') shouldShow = item.visible && !!postitProps.date;
+        if (item.key === 'time') shouldShow = item.visible && !!postitProps.time;
+        if (item.key === 'tags') shouldShow = item.visible && hasTag;
+        el.style.display = shouldShow ? '' : 'none';
+        titleLeftEl.appendChild(el);
+        if (item.key === 'mode') titleLeftEl.appendChild(badgeReadonly);
+      });
+
+      // 오른쪽 그룹 배치
+      while (titleRightEl.firstChild) titleRightEl.removeChild(titleRightEl.firstChild);
+      rightItems.forEach(item => {
+        const el = badgeMap[item.key];
+        if (!el) return;
+        let shouldShow = item.visible;
+        if (item.key === 'dday') shouldShow = item.visible && !!dday;
+        if (item.key === 'date') shouldShow = item.visible && !!postitProps.date;
+        if (item.key === 'time') shouldShow = item.visible && !!postitProps.time;
+        if (item.key === 'tags') shouldShow = item.visible && hasTag;
+        el.style.display = shouldShow ? '' : 'none';
+        titleRightEl.appendChild(el);
+        if (item.key === 'mode') titleRightEl.appendChild(badgeReadonly);
+      });
     }
 
     // D-Day 자동 재계산 (1시간 주기)
@@ -747,6 +874,9 @@
       postitProps.date     = data.date     || '';
       postitProps.time     = data.time     || '';
       postitProps.priority = data.priority ?? 3;
+      postitCategories     = data.categories || [];
+      globalCategories     = data.globalCategories || [];
+      titleBarConfig       = data.titleBarConfig || null;
       if (data.color) applyColor(data.color);
       updateTitleInfo();
       ensureLinkIcons();
@@ -763,7 +893,21 @@
       postitProps.date     = props.date     || '';
       postitProps.time     = props.time     || '';
       postitProps.priority = props.priority ?? 3;
+      if (props.categories) postitCategories = props.categories;
       if (props.color) applyColor(props.color);
+      updateTitleInfo();
+    });
+
+    // ── 타이틀바 설정 변경 수신 (설정 창 → main → 여기) ────
+    ipcRenderer.on('titlebar-config-changed', (_e, config) => {
+      titleBarConfig = config;
+      updateTitleInfo();
+    });
+
+    // ── 전역 태그 정의 변경 수신 (설정 창 → main → 여기) ────
+    ipcRenderer.on('categories-updated', (_e, cats, myCats) => {
+      globalCategories = cats || [];
+      if (myCats) postitCategories = myCats;
       updateTitleInfo();
     });
 

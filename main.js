@@ -24,6 +24,7 @@ const PostitStore = require('./src/store');
 const state = require('./src/state');
 const i18n = require('./src/i18n');
 const { createPostitWindow, createNewPostit } = require('./src/postitWindow');
+const { openNewPostitDialog } = require('./src/dialogs');
 const { createTray } = require('./src/tray');
 const { checkAlarms, registerAlarmIpc } = require('./src/alarm');
 const { registerDragHandlers } = require('./src/drag');
@@ -33,6 +34,7 @@ const { registerIpcHandlers } = require('./src/ipc');
 const { registerCalendarIpc, openCalendar } = require('./src/calendar');
 const { initHistory } = require('./src/history');
 const { registerHistoryIpc } = require('./src/historyWindow');
+const { registerSettingsIpc } = require('./src/settingsWindow');
 
 // ─── IPC 핸들러 등록 (app.whenReady 전에 등록해도 안전) ───────────────────────
 registerIpcHandlers();
@@ -42,6 +44,7 @@ registerManagerIpc();
 registerDialogIpc();
 registerCalendarIpc();
 registerHistoryIpc();
+registerSettingsIpc();
 
 // ─── 앱 라이프사이클 ───────────────────────────────────────────────────────────
 
@@ -82,7 +85,7 @@ app.whenReady().then(() => {
   const postits = state.store.getAll();
   const visible = postits.filter(p => !p.hidden);
   if (postits.length === 0) {
-    createNewPostit();
+    openNewPostitDialog();
   } else {
     visible.forEach(createPostitWindow);
   }
@@ -104,5 +107,5 @@ app.on('window-all-closed', () => {
 
 /** macOS: dock 아이콘 클릭 시 포스트잇이 없으면 새로 생성 */
 app.on('activate', () => {
-  if (state.windows.size === 0) createNewPostit();
+  if (state.windows.size === 0) openNewPostitDialog();
 });

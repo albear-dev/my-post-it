@@ -114,25 +114,26 @@
     .color-presets {
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
+      gap: 4px;
+      flex-wrap: nowrap;
       flex: 1;
     }
 
     .color-swatch {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
       border: 2px solid transparent;
       cursor: pointer;
       transition: border-color 0.15s;
+      flex-shrink: 0;
     }
     .color-swatch:hover { border-color: #888; }
     .color-swatch.selected { border-color: #333; box-shadow: 0 0 4px rgba(0,0,0,0.3); }
 
     .color-custom {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
       border: 1px dashed #aaa;
       border-radius: 50%;
       cursor: pointer;

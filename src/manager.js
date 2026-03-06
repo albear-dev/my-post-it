@@ -88,7 +88,8 @@ function notifyManager() {
  * - manager-hide-all: 모든 포스트잇 숨기기
  */
 function registerManagerIpc() {
-  const { hidePostit, unhidePostit, activatePostit, createNewPostit } = require('./postitWindow');
+  const { hidePostit, unhidePostit, activatePostit } = require('./postitWindow');
+  const { openNewPostitDialog } = require('./dialogs');
   const { notifyCalendar } = require('./calendar');
   const { markDirty } = require('./history');
 
@@ -134,9 +135,7 @@ function registerManagerIpc() {
   });
 
   ipcMain.on('manager-create', () => {
-    createNewPostit();
-    notifyManager();
-    notifyCalendar();
+    openNewPostitDialog();
     markDirty();
   });
 

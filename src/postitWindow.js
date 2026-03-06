@@ -236,7 +236,7 @@ function createPostitWindow(postit) {
  * 새 포스트잇을 기본값으로 생성하고 창을 연다.
  * 위치는 기존 포스트잇 수에 따라 30px씩 오프셋 (최대 8개 순환).
  */
-function createNewPostit() {
+function createNewPostit(contentType) {
   const id     = generateId();
   const count  = state.windows.size;
   const offset = (count % 8) * 30;
@@ -256,7 +256,7 @@ function createNewPostit() {
     alarm:     false,
     alarmDays: [],
     color:       '#ffff99',
-    contentType: 'html',
+    contentType: contentType || 'html',
     locked:       false,
     lockPassword: '',
     readOnly:     false,

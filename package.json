@@ -40,6 +40,8 @@
       "img/**/*",
       "exportpassword.html",
       "categorysettings.html",
+      "newpostit.html",
+      "settings.html",
       "node_modules/**/*"
     ],
     "win": {

@@ -5,8 +5,7 @@
  * 개별 포스트잇에서 발생하는 기본 IPC 이벤트를 처리한다.
  */
 
-const { BrowserWindow, ipcMain, Menu, shell } = require('electron');
-const path = require('path');
+const { BrowserWindow, ipcMain, Menu } = require('electron');
 
 const state = require('./state');
 const i18n = require('./i18n');
@@ -25,8 +24,8 @@ const i18n = require('./i18n');
  * - show-context-menu: 우클릭 컨텍스트 메뉴 표시
  */
 function registerIpcHandlers() {
-  const { createNewPostit, confirmAndDelete, toggleCollapse } = require('./postitWindow');
-  const { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, openCategorySettings } = require('./dialogs');
+  const { confirmAndDelete, toggleCollapse } = require('./postitWindow');
+  const { openFormatter, openCodeSnippet, openProperties, openPasswordDialog, openNewPostitDialog } = require('./dialogs');
   const { openManager, notifyManager } = require('./manager');
   const { notifyCalendar, openCalendar } = require('./calendar');
   const { hidePostit } = require('./postitWindow');
@@ -40,7 +39,12 @@ function registerIpcHandlers() {
   ipcMain.handle('get-postit-data', (event) => {
     for (const [id, win] of state.windows.entries()) {
       if (win.webContents.id === event.sender.id) {
-        return state.store.get(id);
+        const postit = state.store.get(id);
+        if (postit) {
+          postit.titleBarConfig = state.store.getSetting('titleBarConfig') || null;
+          postit.globalCategories = state.store.getCategories() || [];
+        }
+        return postit;
       }
     }
     return null;
@@ -56,12 +60,9 @@ function registerIpcHandlers() {
     markDirty();
   });
 
-  /** 새 포스트잇을 생성하고 매니저·캘린더 목록을 갱신한다. */
+  /** 새 포스트잇 타입 선택 다이얼로그를 연다. */
   ipcMain.on('create-postit', () => {
-    createNewPostit();
-    notifyManager();
-    notifyCalendar();
-    markDirty();
+    openNewPostitDialog();
   });
 
   /** 포스트잇 삭제 (확인 다이얼로그 표시). */
@@ -100,7 +101,7 @@ function registerIpcHandlers() {
    */
   ipcMain.on('show-context-menu', (event, { id, hasSelection, formatting, inEditor, contentType, locked, readOnly }) => {
     const items = [
-      { label: i18n.t('menu.newPostit'), click: () => createNewPostit() },
+      { label: i18n.t('menu.newPostit'), click: () => openNewPostitDialog() },
     ];
 
     // 잠금 안 된 경우에만 편집 메뉴 표시
@@ -164,12 +165,6 @@ function registerIpcHandlers() {
     items.push({ label: i18n.t('menu.allList'),     click: () => openManager() });
     items.push({ label: i18n.t('menu.calendar'),    click: () => openCalendar() });
     items.push({ label: i18n.t('menu.history'),      click: () => openHistory() });
-    items.push({ label: i18n.t('menu.categorySettings'), click: () => openCategorySettings() });
-    items.push({ label: i18n.t('menu.openDataFolder'), click: () => {
-      if (state.store && state.store.dbPath) {
-        shell.openPath(path.dirname(state.store.dbPath));
-      }
-    }});
     items.push({ type: 'separator' });
     items.push({ label: i18n.t('menu.hide'), click: () => hidePostit(id) });
     items.push({ label: i18n.t('menu.deleteThis'), click: () => confirmAndDelete(id) });
