@@ -785,11 +785,10 @@
           ? postitCategories.filter(c => c.startsWith(filterGroup + ':'))
           : postitCategories;
         filtered.forEach(c => {
-          const idx = c.indexOf(':');
-          const displayName = idx > 0 ? c.substring(idx + 1) : c;
           const chip = document.createElement('span');
           chip.className = 'tag-chip';
-          chip.textContent = displayName;
+          chip.textContent = c; // 그룹명 포함 full name
+          chip.dataset.fullName = c;
           const catDef = globalCategories.find(gc => gc.name === c);
           if (catDef && catDef.color) {
             chip.style.background = catDef.color;
@@ -892,12 +891,18 @@
       badgeTags.appendChild(moreEl);
 
       let hidden = 0;
+      const hiddenNames = [];
       // 뒤에서부터 숨기면서 넘침 해소 (최소 1개 유지)
       for (let i = chips.length - 1; i >= 1; i--) {
         chips[i].style.display = 'none';
         hidden++;
+        hiddenNames.unshift(chips[i].dataset.fullName || chips[i].textContent);
         moreEl.textContent = `+${hidden}`;
         if (!isOverflow()) break;
+      }
+      // 숨겨진 태그 목록을 툴팁으로 표시
+      if (hidden > 0) {
+        moreEl.title = hiddenNames.join('\n');
       }
     }
 
