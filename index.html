@@ -70,8 +70,9 @@
     #badge-dday { color: #995500; }
     #badge-date { color: #666; font-size: 9pt; }
     #badge-time { color: #556600; }
-    #badge-tags { display: flex; gap: 3px; align-items: center; font-size: 8.5pt; }
-    #badge-tags .tag-chip { padding: 0 4px; border-radius: 3px; font-weight: 600; white-space: nowrap; }
+    #badge-tags { display: flex; gap: 3px; align-items: center; font-size: 8.5pt; flex-shrink: 0; }
+    #badge-tags .tag-chip { padding: 0 4px; border-radius: 3px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    #badge-tags .tag-more { padding: 0 3px; border-radius: 3px; font-weight: 700; white-space: nowrap; flex-shrink: 0; background: rgba(0,0,0,0.12); color: #444; font-size: 8pt; }
     #badge-readonly { color: #c00; }
 
     #title-text {
@@ -855,7 +856,53 @@
         titleRightEl.appendChild(el);
         if (item.key === 'mode') titleRightEl.appendChild(badgeReadonly);
       });
+
+      // 태그 오버플로우 처리
+      adjustTagOverflow();
     }
+
+    /** 태그가 반대쪽 영역에 닿으면 하나씩 숨기고 +N 표시 */
+    function adjustTagOverflow() {
+      // 기존 +N 뱃지 제거
+      const oldMore = badgeTags.querySelector('.tag-more');
+      if (oldMore) oldMore.remove();
+
+      const chips = Array.from(badgeTags.querySelectorAll('.tag-chip'));
+      if (chips.length <= 1) return;
+
+      // 모두 보이기
+      chips.forEach(c => c.style.display = '');
+
+      const titleInfo = document.getElementById('title-info');
+      const gap = 5; // #title-left, #title-right 사이 gap
+
+      // 자식들의 실제 내용 너비 합 vs 컨테이너 가용 너비
+      const isOverflow = () => {
+        const leftW = titleLeftEl.scrollWidth;
+        const rightW = titleRightEl.scrollWidth;
+        const available = titleInfo.clientWidth;
+        return (leftW + rightW + gap) > available;
+      };
+
+      if (!isOverflow()) return;
+
+      // +N 뱃지 생성
+      const moreEl = document.createElement('span');
+      moreEl.className = 'tag-more';
+      badgeTags.appendChild(moreEl);
+
+      let hidden = 0;
+      // 뒤에서부터 숨기면서 넘침 해소 (최소 1개 유지)
+      for (let i = chips.length - 1; i >= 1; i--) {
+        chips[i].style.display = 'none';
+        hidden++;
+        moreEl.textContent = `+${hidden}`;
+        if (!isOverflow()) break;
+      }
+    }
+
+    // 창 크기 변경 시 태그 오버플로우 재계산
+    new ResizeObserver(() => adjustTagOverflow()).observe(document.getElementById('title-info'));
 
     // D-Day 자동 재계산 (1시간 주기)
     setInterval(updateTitleInfo, 3600000);
@@ -1947,10 +1994,10 @@
       schedSave();
     });
 
-    // ── 삭제 버튼 ─────────────────────────────────────────
+    // ── 닫기(X) 버튼: 숨김/삭제 선택 ──────────────────────
     btnDelete.addEventListener('click', e => {
       e.stopPropagation();
-      ipcRenderer.send('delete-postit', { id: postitId });
+      ipcRenderer.send('close-postit', { id: postitId });
     });
 
     // ── 저장 토스트 표시 ───────────────────────────────────

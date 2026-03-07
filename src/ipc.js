@@ -5,7 +5,7 @@
  * 개별 포스트잇에서 발생하는 기본 IPC 이벤트를 처리한다.
  */
 
-const { BrowserWindow, ipcMain, Menu } = require('electron');
+const { BrowserWindow, ipcMain, Menu, dialog } = require('electron');
 
 const state = require('./state');
 const i18n = require('./i18n');
@@ -69,6 +69,27 @@ function registerIpcHandlers() {
   ipcMain.on('delete-postit', (_event, { id }) => {
     confirmAndDelete(id);
     markDirty();
+  });
+
+  /** X 버튼: 숨김/삭제 선택 다이얼로그. */
+  ipcMain.on('close-postit', async (_event, { id }) => {
+    const win = state.windows.get(id);
+    if (!win) return;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'question',
+      buttons: [i18n.t('dialog.hide'), i18n.t('dialog.delete'), i18n.t('dialog.cancel')],
+      defaultId: 0,
+      cancelId: 2,
+      message: i18n.t('dialog.closeConfirm'),
+    });
+    if (response === 0) {
+      hidePostit(id);
+      notifyManager();
+      markDirty();
+    } else if (response === 1) {
+      confirmAndDelete(id);
+      markDirty();
+    }
   });
 
   /** 접기/펴기 토글. */

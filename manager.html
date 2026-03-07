@@ -61,12 +61,51 @@
       border-radius: 3px;
       font-family: inherit;
       font-size: 9pt;
-      width: 180px;
+      flex: 1;
+      min-width: 100px;
     }
     #searchInput:focus {
       outline: none;
       border-color: #5c9eff;
       box-shadow: 0 0 3px rgba(92,158,255,0.4);
+    }
+
+    /* ── Filter Bar ─────────────────────────── */
+    #filter-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px 12px;
+      background: #fafaf2;
+      border-bottom: 1px solid #e0e0d8;
+      flex-shrink: 0;
+      font-size: 8.5pt;
+      color: #555;
+    }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #filter-bar label { white-space: nowrap; }
+    #filter-bar input[type="date"] {
+      padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px;
+      font-family: inherit; font-size: 8.5pt;
+    }
+    #filter-bar input[type="number"] {
+      width: 50px; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px;
+      font-family: inherit; font-size: 8.5pt; text-align: center;
+    }
+    #filter-bar button {
+      padding: 2px 8px; border: 1px solid #bbb; border-radius: 3px;
+      background: #fff; cursor: pointer; font-family: inherit; font-size: 8pt;
+    }
+    #filter-bar button:hover { background: #eee; }
+    #filter-bar .cb-label {
+      display: flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap;
+    }
+    #filter-bar .toolbar-sep {
+      width: 1px; height: 18px; background: #ddd; flex-shrink: 0;
     }
 
     /* ── Summary ──────────────────────────── */
@@ -160,19 +199,67 @@
       font-weight: 600;
     }
 
-    #catFilter {
-      padding: 4px 6px;
+    /* ── 태그 필터 (커스텀 다중선택) ──────── */
+    .cat-filter-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .cat-filter-btn {
+      padding: 4px 22px 4px 8px;
       border: 1px solid #bbb;
       border-radius: 3px;
+      background: #fff;
       font-family: inherit;
       font-size: 9pt;
-      max-width: 140px;
+      cursor: pointer;
+      white-space: nowrap;
+      min-width: 180px;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      position: relative;
     }
-    #catFilter:focus {
-      outline: none;
-      border-color: #5c9eff;
-      box-shadow: 0 0 3px rgba(92,158,255,0.4);
+    .cat-filter-btn::after {
+      content: '▾'; position: absolute; right: 6px; top: 50%;
+      transform: translateY(-50%); font-size: 8pt; color: #888;
     }
+    .cat-filter-btn:hover { border-color: #999; }
+    .cat-filter-btn.active { border-color: #5c9eff; box-shadow: 0 0 3px rgba(92,158,255,0.4); }
+    .cat-filter-dropdown {
+      display: none; position: absolute; top: 100%; left: 0; z-index: 100;
+      min-width: 200px; max-height: 300px; overflow-y: auto;
+      background: #fff; border: 1px solid #ccc; border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 2px; padding: 4px 0;
+    }
+    .cat-filter-dropdown.open { display: block; }
+    .cfd-special, .cfd-item {
+      padding: 4px 12px; cursor: pointer; font-size: 9pt;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .cfd-item { padding-left: 20px; }
+    .cfd-special:hover, .cfd-item:hover { background: #f0f4ff; }
+    .cfd-group-label {
+      padding: 6px 12px 2px; font-size: 8pt; font-weight: 700; color: #888;
+    }
+    .cfd-color { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .cfd-check {
+      width: 14px; height: 14px; border: 1.5px solid #aaa; border-radius: 3px;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #fff; background: #fff;
+    }
+    .checked .cfd-check { background: #4a8df8; border-color: #4a8df8; }
+    .cfd-sep { height: 1px; background: #eee; margin: 4px 0; }
+    .cfd-mode-row {
+      display: flex; align-items: center; padding: 4px 12px; gap: 4px;
+    }
+    .cfd-mode-btn {
+      flex: 1; padding: 3px 0; border: 1px solid #ccc; border-radius: 3px;
+      background: #fff; font-family: inherit; font-size: 8pt; font-weight: 700;
+      cursor: pointer; color: #999; text-align: center;
+    }
+    .cfd-mode-btn:hover { background: #f5f5f5; }
+    .cfd-mode-btn.active-and { background: #e3f2fd; border-color: #90caf9; color: #1565c0; }
+    .cfd-mode-btn.active-or  { background: #fff3e0; border-color: #ffcc80; color: #e65100; }
 
     /* ── 스크롤바 커스텀 ──────────────────── */
     #table-wrap::-webkit-scrollbar { width: 10px; }
@@ -192,10 +279,34 @@
     <div class="toolbar-sep"></div>
     <button id="btnShowAll" data-i18n="manager.showAll">Show All</button>
     <button id="btnHideAll" data-i18n="manager.hideAll">Hide All</button>
-    <div class="toolbar-sep"></div>
-    <select id="catFilter"></select>
-    <div class="toolbar-spacer"></div>
-    <input type="text" id="searchInput" data-i18n-placeholder="manager.search" placeholder="Search...">
+  </div>
+
+  <div id="filter-bar">
+    <div class="filter-row">
+      <label data-i18n="manager.dateFrom">시작일</label>
+      <input type="date" id="filterDateFrom">
+      <span>~</span>
+      <label data-i18n="manager.dateTo">종료일</label>
+      <input type="date" id="filterDateTo">
+      <button id="btnDateReset" data-i18n="manager.dateReset">초기화</button>
+      <div class="toolbar-sep"></div>
+      <label data-i18n="manager.ddayWithin">D-Day 이내</label>
+      <input type="number" id="filterDday" min="0" placeholder="N">
+      <span data-i18n="manager.ddayDays">일</span>
+      <label class="cb-label"><input type="checkbox" id="filterDdayPast"><span data-i18n="manager.ddayIncludePast">지난것 포함</span></label>
+    </div>
+    <div class="filter-row">
+      <label data-i18n="manager.filterTag">태그</label>
+      <div class="cat-filter-wrap" id="catFilterWrap">
+        <div class="cat-filter-btn" id="catFilterBtn"></div>
+        <div class="cat-filter-dropdown" id="catFilterDropdown"></div>
+      </div>
+      <div class="toolbar-sep"></div>
+      <label data-i18n="manager.filterTitle">타이틀</label>
+      <input type="text" id="searchInput" data-i18n-placeholder="manager.search" placeholder="Search...">
+      <div class="toolbar-sep"></div>
+      <label class="cb-label"><input type="checkbox" id="filterShowHidden"><span data-i18n="manager.showHidden">숨김 포함</span></label>
+    </div>
   </div>
 
   <div id="summary">
@@ -247,7 +358,13 @@
     let sortKey       = 'priority';
     let sortDir       = 'asc';
     let searchKeyword = '';
-    let catFilterValue = '__all__';
+    let catFilterValues = []; // 선택된 태그명 배열 (빈 배열 = 전체)
+    let catFilterMode   = 'or'; // 'and' | 'or'
+    let dateFrom        = '';  // YYYY-MM-DD
+    let dateTo          = '';  // YYYY-MM-DD
+    let ddayWithin      = '';  // N일 이내 (빈 문자열 = 비활성)
+    let ddayIncludePast = false;
+    let showHidden      = false;
 
     const PRIORITY_COLORS = {
       1: '#e53935', 2: '#f9a825', 3: '#1e88e5',
@@ -265,7 +382,8 @@
     const countTotal  = document.getElementById('countTotal');
     const countVisible= document.getElementById('countVisible');
     const countHidden = document.getElementById('countHidden');
-    const catFilter   = document.getElementById('catFilter');
+    const catFilterBtn  = document.getElementById('catFilterBtn');
+    const catFilterDrop = document.getElementById('catFilterDropdown');
 
     // ── Utility ────────────────────────────
     function contrastText(hex) {
@@ -322,15 +440,48 @@
     function getFilteredPostits() {
       let list = allPostits;
 
-      // 태그 필터
-      if (catFilterValue === '__none__') {
-        list = list.filter(p => !p.categories || p.categories.length === 0);
-      } else if (catFilterValue !== '__all__') {
-        if (catFilterValue.startsWith('group:')) {
-          const group = catFilterValue.slice(6);
-          list = list.filter(p => (p.categories || []).some(c => c.startsWith(group + ':')));
-        } else {
-          list = list.filter(p => (p.categories || []).includes(catFilterValue));
+      // 숨김 필터 (기본: 숨김 제외)
+      if (!showHidden) {
+        list = list.filter(p => !p.hidden);
+      }
+
+      // 태그 필터 (다중선택, AND/OR)
+      if (catFilterValues.length > 0) {
+        const hasNone = catFilterValues.includes('__none__');
+        const tagNames = catFilterValues.filter(v => v !== '__none__');
+        list = list.filter(p => {
+          const cats = p.categories || [];
+          // "미지정" 체크: 태그 없는 포스트잇
+          const noneMatch = hasNone && cats.length === 0;
+          if (tagNames.length === 0) return noneMatch;
+          // 태그 매칭 (정확히 일치)
+          const tagMatch = catFilterMode === 'and'
+            ? tagNames.every(v => cats.indexOf(v) >= 0)
+            : tagNames.some(v => cats.indexOf(v) >= 0);
+          return noneMatch || tagMatch;
+        });
+      }
+
+      // 날짜 범위 필터
+      if (dateFrom) {
+        list = list.filter(p => p.date && p.date >= dateFrom);
+      }
+      if (dateTo) {
+        list = list.filter(p => p.date && p.date <= dateTo);
+      }
+
+      // 디데이 필터
+      if (ddayWithin !== '') {
+        const n = parseInt(ddayWithin, 10);
+        if (!isNaN(n)) {
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          list = list.filter(p => {
+            if (!p.date) return false;
+            const target = new Date(p.date + 'T00:00:00');
+            const diff = Math.ceil((target - today) / 86400000);
+            if (diff < 0) return ddayIncludePast; // 지난것
+            return diff <= n;
+          });
         }
       }
 
@@ -540,6 +691,25 @@
       renderTable();
     });
 
+    // 날짜 필터
+    const filterDateFrom = document.getElementById('filterDateFrom');
+    const filterDateTo   = document.getElementById('filterDateTo');
+    const filterDday     = document.getElementById('filterDday');
+    const filterDdayPast = document.getElementById('filterDdayPast');
+
+    filterDateFrom.addEventListener('change', () => { dateFrom = filterDateFrom.value; renderTable(); });
+    filterDateTo.addEventListener('change', () => { dateTo = filterDateTo.value; renderTable(); });
+    document.getElementById('btnDateReset').addEventListener('click', () => {
+      dateFrom = ''; dateTo = '';
+      filterDateFrom.value = ''; filterDateTo.value = '';
+      renderTable();
+    });
+    filterDday.addEventListener('input', () => { ddayWithin = filterDday.value.trim(); renderTable(); });
+    filterDdayPast.addEventListener('change', () => { ddayIncludePast = filterDdayPast.checked; renderTable(); });
+
+    const filterShowHidden = document.getElementById('filterShowHidden');
+    filterShowHidden.addEventListener('change', () => { showHidden = filterShowHidden.checked; renderTable(); });
+
     // 정렬 헤더 클릭
     document.querySelectorAll('th.sortable').forEach(th => {
       th.addEventListener('click', () => {
@@ -573,7 +743,7 @@
       if (ids.length > 0) ipcRenderer.send('manager-delete', { ids });
     });
     document.getElementById('btnShowAll').addEventListener('click', () => {
-      if (catFilterValue !== '__all__') {
+      if (catFilterValues.length > 0) {
         const ids = getFilteredPostits().filter(p => p.hidden).map(p => p.id);
         if (ids.length > 0) ipcRenderer.send('manager-show-filtered', { ids });
       } else {
@@ -581,7 +751,7 @@
       }
     });
     document.getElementById('btnHideAll').addEventListener('click', () => {
-      if (catFilterValue !== '__all__') {
+      if (catFilterValues.length > 0) {
         const ids = getFilteredPostits().filter(p => !p.hidden).map(p => p.id);
         if (ids.length > 0) ipcRenderer.send('manager-hide-filtered', { ids });
       } else {
@@ -589,67 +759,144 @@
       }
     });
 
-    // ── 태그 필터 드롭다운 ──────────────────
+    // ── 태그 필터 (커스텀 다중선택 드롭다운) ──────────────────
     function buildCatFilter() {
-      const prev = catFilterValue;
-      catFilter.innerHTML = '';
+      const prev = new Set(catFilterValues);
+      catFilterDrop.innerHTML = '';
 
-      // 전체 / 미지정
-      const optAll = document.createElement('option');
-      optAll.value = '__all__'; optAll.textContent = t('manager.catAll');
-      catFilter.appendChild(optAll);
+      // AND/OR 토글
+      const modeRow = document.createElement('div');
+      modeRow.className = 'cfd-mode-row';
+      const btnOr = document.createElement('button');
+      btnOr.className = 'cfd-mode-btn' + (catFilterMode === 'or' ? ' active-or' : '');
+      btnOr.textContent = 'OR';
+      const btnAnd = document.createElement('button');
+      btnAnd.className = 'cfd-mode-btn' + (catFilterMode === 'and' ? ' active-and' : '');
+      btnAnd.textContent = 'AND';
+      btnOr.addEventListener('click', e => { e.stopPropagation(); catFilterMode = 'or'; buildCatFilter(); renderTable(); });
+      btnAnd.addEventListener('click', e => { e.stopPropagation(); catFilterMode = 'and'; buildCatFilter(); renderTable(); });
+      modeRow.appendChild(btnOr);
+      modeRow.appendChild(btnAnd);
+      catFilterDrop.appendChild(modeRow);
 
-      const optNone = document.createElement('option');
-      optNone.value = '__none__'; optNone.textContent = t('manager.catNone');
-      catFilter.appendChild(optNone);
+      catFilterDrop.appendChild(Object.assign(document.createElement('div'), { className: 'cfd-sep' }));
+
+      // "미지정" 특수 항목
+      const noneDiv = document.createElement('div');
+      noneDiv.className = 'cfd-special' + (prev.has('__none__') ? ' checked' : '');
+      noneDiv.dataset.value = '__none__';
+      noneDiv.innerHTML = `<span class="cfd-check">${prev.has('__none__') ? '✓' : ''}</span>${t('manager.catNone')}`;
+      catFilterDrop.appendChild(noneDiv);
+
+      catFilterDrop.appendChild(Object.assign(document.createElement('div'), { className: 'cfd-sep' }));
 
       // 그룹별 분류
       const groups = {};
+      const ungrouped = [];
       allCategories.forEach(cat => {
-        const parts = cat.name.split(':');
-        const group = parts.length > 1 ? parts[0] : '';
-        if (!groups[group]) groups[group] = [];
-        groups[group].push(cat);
-      });
-
-      Object.keys(groups).sort().forEach(group => {
-        if (group) {
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = group;
-
-          // 그룹 전체 옵션
-          const grpOpt = document.createElement('option');
-          grpOpt.value = 'group:' + group;
-          grpOpt.textContent = group + ' (' + t('manager.catAll') + ')';
-          optgroup.appendChild(grpOpt);
-
-          groups[group].forEach(cat => {
-            const opt = document.createElement('option');
-            opt.value = cat.name;
-            const sub = cat.name.split(':').slice(1).join(':');
-            opt.textContent = sub;
-            optgroup.appendChild(opt);
-          });
-          catFilter.appendChild(optgroup);
+        const idx = cat.name.indexOf(':');
+        if (idx > 0) {
+          const group = cat.name.substring(0, idx);
+          if (!groups[group]) groups[group] = [];
+          groups[group].push(cat);
         } else {
-          // 그룹 없는 태그
-          groups[group].forEach(cat => {
-            const opt = document.createElement('option');
-            opt.value = cat.name;
-            opt.textContent = cat.name;
-            catFilter.appendChild(opt);
-          });
+          ungrouped.push(cat);
         }
       });
 
-      catFilter.value = prev;
-      if (!catFilter.value) catFilter.value = '__all__';
-      catFilterValue = catFilter.value;
+      // 그룹 없는 태그
+      ungrouped.forEach(cat => {
+        catFilterDrop.appendChild(makeCatItem(cat, prev));
+      });
+
+      // 그룹별 태그
+      Object.keys(groups).sort().forEach(group => {
+        // 그룹 헤더 (클릭하면 그룹 전체 선택/해제)
+        const header = document.createElement('div');
+        header.className = 'cfd-group-label';
+        header.textContent = group;
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', e => {
+          e.stopPropagation();
+          const names = groups[group].map(c => c.name);
+          const allChecked = names.every(n => catFilterValues.includes(n));
+          if (allChecked) {
+            catFilterValues = catFilterValues.filter(v => !names.includes(v));
+          } else {
+            names.forEach(n => { if (!catFilterValues.includes(n)) catFilterValues.push(n); });
+          }
+          buildCatFilter();
+          renderTable();
+        });
+        catFilterDrop.appendChild(header);
+
+        groups[group].forEach(cat => {
+          catFilterDrop.appendChild(makeCatItem(cat, prev));
+        });
+      });
+
+      updateCatFilterBtnText();
     }
 
-    catFilter.addEventListener('change', () => {
-      catFilterValue = catFilter.value;
+    function makeCatItem(cat, selectedSet) {
+      const isChecked = selectedSet.has(cat.name);
+      const div = document.createElement('div');
+      div.className = 'cfd-item' + (isChecked ? ' checked' : '');
+      div.dataset.value = cat.name;
+      const idx = cat.name.indexOf(':');
+      const displayName = idx > 0 ? cat.name.substring(idx + 1) : cat.name;
+      div.innerHTML =
+        `<span class="cfd-check">${isChecked ? '✓' : ''}</span>` +
+        `<span class="cfd-color" style="background:${cat.color}"></span>` +
+        `<span>${displayName}</span>`;
+      return div;
+    }
+
+    function updateCatFilterBtnText() {
+      if (catFilterValues.length === 0) {
+        catFilterBtn.textContent = t('manager.catAll');
+      } else if (catFilterValues.length === 1) {
+        const v = catFilterValues[0];
+        if (v === '__none__') {
+          catFilterBtn.textContent = t('manager.catNone');
+        } else {
+          const idx = v.indexOf(':');
+          catFilterBtn.textContent = idx > 0 ? v.substring(idx + 1) : v;
+        }
+      } else {
+        const first = catFilterValues[0];
+        const idx = first.indexOf(':');
+        const name = first === '__none__' ? t('manager.catNone') : (idx > 0 ? first.substring(idx + 1) : first);
+        catFilterBtn.textContent = `${name} +${catFilterValues.length - 1}`;
+      }
+    }
+
+    // 드롭다운 토글
+    catFilterBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      catFilterDrop.classList.toggle('open');
+      catFilterBtn.classList.toggle('active', catFilterDrop.classList.contains('open'));
+    });
+
+    // 드롭다운 내부 클릭 시 닫히지 않게
+    catFilterDrop.addEventListener('click', e => e.stopPropagation());
+
+    // 항목 클릭 (체크 토글)
+    catFilterDrop.addEventListener('click', e => {
+      const item = e.target.closest('.cfd-item, .cfd-special');
+      if (!item) return;
+      const val = item.dataset.value;
+      const idx = catFilterValues.indexOf(val);
+      if (idx >= 0) catFilterValues.splice(idx, 1);
+      else catFilterValues.push(val);
+      buildCatFilter();
       renderTable();
+    });
+
+    // 외부 클릭 시 닫기
+    document.addEventListener('click', () => {
+      catFilterDrop.classList.remove('open');
+      catFilterBtn.classList.remove('active');
     });
 
     // ── IPC ────────────────────────────────
